@@ -1,6 +1,7 @@
 {#-
     One row per player version (type 2). Join facts on player_id with is_current for today's
     attributes, or on player_id and the fact date between valid_from and valid_to for history.
+    A player's first version is valid from 1900-01-01 (see the valid_from comment).
 -#}
 
 with
@@ -22,7 +23,15 @@ final as (
         cast(jersey_number as varchar) as jersey_number,
         cast(position as varchar) as position,
         cast(headshot_url as varchar) as headshot_url,
-        cast(dbt_valid_from as timestamp) as valid_from,
+        -- The snapshot only starts recording when it first runs. Treat each player's first
+        -- version as valid from the beginning of time so earlier games still join to it.
+        cast(
+            case
+                when dbt_valid_from = min(dbt_valid_from) over (partition by player_id)
+                    then timestamp '1900-01-01'
+                else dbt_valid_from
+            end as timestamp
+        ) as valid_from,
         cast(dbt_valid_to as timestamp) as valid_to,
         dbt_valid_to is null as is_current
     from snapshot

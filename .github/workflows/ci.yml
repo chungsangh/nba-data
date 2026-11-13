@@ -59,6 +59,10 @@ jobs:
       - run: cd transform && uv run dbt deps
       - name: dbt build (models, unit tests, data tests)
         run: cd transform && uv run dbt build
+      - name: Semantic layer validation (MetricFlow, against the warehouse)
+        run: cd transform && uv run mf validate-configs
+      - name: Known-answer metric tests (MetricFlow vs independent SQL)
+        run: uv run python scripts/check_metrics.py
       - name: Source freshness
         # Non-blocking: a stale upstream should alert, not block unrelated PRs.
         continue-on-error: true
@@ -72,4 +76,5 @@ jobs:
             transform/target/manifest.json
             transform/target/run_results.json
             transform/target/sources.json
+            transform/target/semantic_manifest.json
           retention-days: 14

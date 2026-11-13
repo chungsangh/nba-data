@@ -1,0 +1,104 @@
+semantic_models:
+  - name: team_games
+    description: >
+      One row per team per completed game (gold fct_team_games). Basis for team efficiency,
+      shooting and results metrics. Ratings use "rated_" measures that only count games with
+      play-by-play, so numerators and possession denominators always cover the same games.
+    model: ref('fct_team_games')
+    defaults:
+      agg_time_dimension: game_date
+
+    entities:
+      - name: team_game
+        type: primary
+        expr: team_game_id
+      - name: team
+        type: foreign
+        expr: team_id
+      - name: game
+        type: foreign
+        expr: game_id
+
+    dimensions:
+      - name: game_date
+        type: time
+        type_params:
+          time_granularity: day
+      - name: season
+        type: categorical
+      - name: season_type
+        type: categorical
+      - name: playoff_round
+        type: categorical
+      - name: is_home
+        type: categorical
+      - name: is_win
+        type: categorical
+      - name: counts_toward_record
+        type: categorical
+
+    measures:
+      # results
+      - name: team_games_played
+        description: Team-games played.
+        agg: count
+        expr: team_game_id
+      - name: team_wins
+        description: Team-games won.
+        agg: sum
+        expr: case when is_win then 1 else 0 end
+      - name: team_points
+        create_metric: true
+        agg: sum
+        expr: points
+
+      # efficiency (only games with play-by-play possessions)
+      - name: games_with_possessions
+        create_metric: true
+        agg: sum
+        expr: case when possessions is not null then 1 else 0 end
+      - name: possessions
+        agg: sum
+      - name: opponent_possessions
+        create_metric: true
+        agg: sum
+      - name: rated_points
+        create_metric: true
+        agg: sum
+        expr: case when possessions is not null then points end
+      - name: rated_opponent_points
+        create_metric: true
+        agg: sum
+        expr: case when opponent_possessions is not null then opponent_points end
+      - name: rated_turnovers
+        create_metric: true
+        agg: sum
+        expr: case when possessions is not null then turnovers end
+
+      # shooting
+      - name: field_goals_attempted
+        create_metric: true
+        agg: sum
+      - name: three_pointers_attempted
+        create_metric: true
+        agg: sum
+      - name: effective_field_goals
+        create_metric: true
+        description: Field goals with threes weighted 1.5x, the eFG% numerator.
+        agg: sum
+        expr: field_goals_made + 0.5 * three_pointers_made
+      - name: true_shooting_attempts
+        create_metric: true
+        description: 2 x (FGA + 0.44 x FTA), the TS% denominator.
+        agg: sum
+        expr: 2 * (field_goals_attempted + 0.44 * free_throws_attempted)
+
+      # rebounding
+      - name: offensive_rebounds
+        create_metric: true
+        agg: sum
+      - name: offensive_rebound_chances
+        create_metric: true
+        description: Own offensive rebounds plus opponent defensive rebounds.
+        agg: sum
+        expr: offensive_rebounds + opponent_defensive_rebounds
