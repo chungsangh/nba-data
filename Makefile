@@ -6,10 +6,10 @@ export DBT_PROFILES_DIR := $(CURDIR)/transform
 SEASONS ?=
 DBT := cd transform && uv run dbt
 
-.PHONY: help setup ingest deps build test lint fmt docs freshness clean metrics metrics-catalog metrics-check
+.PHONY: help setup ingest deps build test lint fmt docs freshness clean metrics metrics-catalog metrics-check airflow-setup airflow-ui airflow-test airflow-run
 
 help: ## Show available commands
-	@grep -E '^[a-z-]+:.*## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*## "}; {printf "  \033[36m%-10s\033[0m %s\n", $$1, $$2}'
+	@grep -E '^[a-z-]+:.*## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*## "}; {printf "  \033[36m%-15s\033[0m %s\n", $$1, $$2}'
 
 setup: ## Install Python deps, dbt packages and git hooks
 	uv sync
@@ -49,6 +49,27 @@ fmt: ## Auto-fix SQL and Python formatting
 
 docs: ## Build and serve dbt docs on http://localhost:8080
 	$(DBT) docs generate && $(DBT) docs serve
+
+# ---- Airflow (separate environment in orchestration/) ----
+AIRFLOW_ENV := AIRFLOW_HOME=$(CURDIR)/orchestration/.airflow AIRFLOW__CORE__LOAD_EXAMPLES=False \
+	AIRFLOW__CORE__DAGS_FOLDER=$(CURDIR)/orchestration/dags
+DAG ?= nba_daily
+
+airflow-setup: ## Install Airflow + Cosmos and initialize Airflow's local metadata DB
+	cd orchestration && uv sync && $(AIRFLOW_ENV) uv run airflow db migrate
+	$(DBT) parse --quiet
+
+airflow-ui: ## Airflow UI on http://localhost:8080 (login printed in the output)
+	$(DBT) parse --quiet
+	cd orchestration && $(AIRFLOW_ENV) uv run airflow standalone
+
+airflow-test: ## DAG integrity tests
+	$(DBT) parse --quiet
+	cd orchestration && $(AIRFLOW_ENV) uv run pytest
+
+airflow-run: ## Run a DAG once, headless, like the scheduled prod job (DAG=nba_daily)
+	$(DBT) parse --quiet
+	cd orchestration && $(AIRFLOW_ENV) uv run airflow dags test $(DAG)
 
 clean: ## Remove dbt build output (keeps data)
 	$(DBT) clean

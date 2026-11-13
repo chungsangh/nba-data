@@ -1,0 +1,60 @@
+name: Docs
+
+# Builds the project on the current season and publishes the dbt docs site (lineage graph,
+# model and column docs) plus METRICS.md to GitHub Pages. Needs no secrets: it builds into a
+# throwaway DuckDB file with prod schema names.
+
+on:
+  push:
+    branches: [main]
+    paths: ["transform/**", "METRICS.md", ".github/workflows/docs.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+env:
+  UV_PYTHON: "3.12"
+  DBT_TARGET: prod
+  DBT_PROFILES_DIR: ${{ github.workspace }}/transform
+  NBA_DUCKDB_PATH: ${{ github.workspace }}/data/nba.duckdb
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: astral-sh/setup-uv@v10.3.3
+        with:
+          enable-cache: true
+      - run: uv sync --locked
+      - name: Build current season
+        run: |
+          uv run nba-ingest
+          cd transform && uv run dbt deps && uv run dbt build
+      - name: Generate docs site
+        run: |
+          cd transform && uv run dbt docs generate --static
+          mkdir -p ../site && cp target/static_index.html ../site/index.html
+          cp ../METRICS.md ../site/METRICS.md
+      - uses: actions/configure-pages@v6.0.0
+      - uses: actions/upload-pages-artifact@v5.0.0
+        with:
+          path: site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v5.0.1

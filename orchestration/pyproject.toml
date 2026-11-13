@@ -1,0 +1,18 @@
+[project]
+name = "nba-orchestration"
+version = "0.1.0"
+description = "Airflow DAGs for the nba-data project. Kept in its own environment so Airflow's dependencies never constrain dbt's."
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "apache-airflow==3.3.2",
+    "astronomer-cosmos==1.15.1",
+]
+
+[dependency-groups]
+dev = ["pytest>=8"]
+
+[tool.uv]
+package = false
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

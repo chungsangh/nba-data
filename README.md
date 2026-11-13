@@ -7,7 +7,7 @@ metrics, and CI that lets many people change models safely.
 The data is real and refreshes daily: ESPN play-by-play, box scores and schedules, republished by
 [sportsdataverse-data](https://github.com/sportsdataverse/sportsdataverse-data).
 
-> Status: **Phase 3, semantic layer.** Governed MetricFlow metrics sit on top of contracted gold models.
+> Status: **Phase 4, orchestration.** Airflow + Cosmos DAGs run the pipeline daily against MotherDuck.
 > See the [roadmap](#roadmap) and the full [project plan](docs/project-plan.md).
 
 ## Quick start
@@ -35,6 +35,7 @@ sportsdataverse parquet ──► ingestion/ (Python) ──► raw schema ─�
 |---|---|
 | [`ingestion/`](ingestion/) | Downloads season files, replaces one season per load in a transaction, adds lineage columns, logs every load, handles upstream schema drift. Tested with pytest. |
 | [`transform/`](transform/) | The dbt project. `models/bronze`, `silver`, `gold`, `semantic`. |
+| [`orchestration/`](orchestration/) | Airflow DAGs (Cosmos), in their own environment. DAG integrity tests. |
 | [`docs/adr/`](docs/adr/) | Architecture decision records: why each choice was made. |
 | [`scripts/`](scripts/) | Metrics catalog generator with governance rules, known-answer metric checks. |
 | [`STYLE_GUIDE.md`](STYLE_GUIDE.md) | Layer rules, naming, SQL style, testing standards. |
@@ -79,6 +80,26 @@ corner threes, 1.04 on above-the-break threes, 0.83 from mid-range.
 How metrics are governed (owners, tiers, certified-can't-depend-on-experimental, known-answer
 tests) is in [CONTRIBUTING.md](CONTRIBUTING.md#changing-metrics).
 
+## Orchestration
+
+Airflow 3 DAGs in [`orchestration/`](orchestration/), with
+[Astronomer Cosmos](https://github.com/astronomer/astronomer-cosmos) turning every dbt model,
+seed, snapshot and test into its own Airflow task:
+
+```
+nba_daily   ingest current season ─► dbt (51 tasks: model ─► its tests; cross-model tests wait for all parents)
+                                 ─► MetricFlow validation + known-answer metric tests ─► source freshness
+nba_backfill  reload chosen seasons ─► dbt build --full-refresh ─► metric checks   (manual, with params)
+```
+
+- **Prod** runs on a GitHub Actions schedule ([`prod.yml`](.github/workflows/prod.yml)) that
+  executes the same DAG headless against MotherDuck, saves the prod dbt manifest, and opens a
+  `prod-failure` issue when a task fails. Why not hosted Airflow: [ADR 0004](docs/adr/0004-orchestration-airflow-on-actions.md).
+- **Locally**: `make airflow-setup` once, then `make airflow-ui` for the Airflow UI or
+  `make airflow-run` to run `nba_daily` headless against your local DuckDB.
+- **Docs**: [`docs.yml`](.github/workflows/docs.yml) publishes the dbt docs site (lineage, model
+  and column docs) to GitHub Pages on every merge to `main`.
+
 ## Quality gates
 
 Every commit (pre-commit) and every pull request (GitHub Actions) runs:
@@ -86,7 +107,8 @@ Every commit (pre-commit) and every pull request (GitHub Actions) runs:
 - **ruff** for Python, **SQLFluff** for SQL (rendered through dbt).
 - **dbt-checkpoint**: every model documented, has a properties file and tests; model names follow
   the layer convention; every source has freshness rules.
-- **pytest** for the ingestion code.
+- **pytest** for the ingestion code, metric governance rules, and Airflow DAG integrity (DAGs
+  import, every task has an owner, retries and failure alerting; Cosmos renders every model).
 - **`dbt build`** into a schema owned by that PR (`ci_pr_<n>_*`): models, **unit tests** for
   transformation logic (play ordering and possession numbering, shot geometry, label cleanup),
   data tests, and **contracts** on every gold model.
@@ -112,7 +134,7 @@ score corrections.
 3. **Semantic layer** — MetricFlow semantic models and metrics (offensive/defensive/net rating,
    pace, eFG%, TS%, season-to-date and rolling metrics), saved queries, metric ownership and tiers. ✅
 4. **Orchestration & prod** — Airflow + Astronomer Cosmos DAGs, MotherDuck prod, scheduled runs,
-   backfills, alerts, dbt docs site.
+   backfills, alerts, dbt docs site. ✅
 5. **Team-scale CI & governance** — Slim CI with `state:modified+ --defer`, Recce data diffs on PRs,
    dbt-project-evaluator, CODEOWNERS, model access and groups, versioned gold models,
    breaking-change guard.

@@ -207,6 +207,16 @@ def load_parquet(
     return LoadResult(dataset.name, season, rows_loaded, rows_replaced, source_published_at)
 
 
+def ensure_database(database: str) -> None:
+    """MotherDuck databases must exist before connecting to them by name; create on first run."""
+    if not database.startswith("md:"):
+        return
+    name = database.removeprefix("md:").split("?")[0]
+    if name:
+        with duckdb.connect("md:") as con:
+            con.execute(f'create database if not exists "{name}"')
+
+
 def ingest(
     datasets: list[Dataset],
     seasons: list[int],
@@ -214,6 +224,7 @@ def ingest(
     client: httpx.Client | None = None,
 ) -> list[LoadResult]:
     """Download and load every (dataset, season) pair into ``database``."""
+    ensure_database(database)
     own_client = client is None
     client = client or httpx.Client(timeout=HTTP_TIMEOUT, follow_redirects=True)
     results: list[LoadResult] = []

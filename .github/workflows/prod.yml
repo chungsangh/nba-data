@@ -1,0 +1,119 @@
+name: Prod
+
+# Runs the Airflow DAGs headless on a GitHub runner against MotherDuck. Same DAG code as a local
+# `airflow standalone`; GitHub Actions only provides the schedule and a machine.
+# See docs/adr/0004-orchestration-airflow-on-actions.md.
+
+on:
+  schedule:
+    - cron: "0 14 * * *" # 14:00 UTC, after the publisher's ~12:30 UTC refresh
+  workflow_dispatch:
+    inputs:
+      dag:
+        description: DAG to run
+        type: choice
+        options: [nba_daily, nba_backfill]
+        default: nba_daily
+      seasons:
+        description: "nba_backfill only: ESPN seasons, comma-separated (2026 = 2025-26)"
+        default: ""
+      full_refresh:
+        description: "nba_backfill only: rebuild incremental models from scratch"
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+  issues: write # failure alerts
+
+concurrency:
+  group: prod
+  cancel-in-progress: false
+
+env:
+  UV_PYTHON: "3.12"
+  DBT_TARGET: prod
+  NBA_DUCKDB_PATH: md:nba
+  DBT_PROFILES_DIR: ${{ github.workspace }}/transform
+  AIRFLOW__CORE__LOAD_EXAMPLES: "False"
+  AIRFLOW__CORE__DAGS_FOLDER: ${{ github.workspace }}/orchestration/dags
+  MOTHERDUCK_TOKEN: ${{ secrets.MOTHERDUCK_TOKEN }}
+
+jobs:
+  run-dag:
+    name: Run ${{ inputs.dag || 'nba_daily' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - name: Check MotherDuck is configured
+        id: config
+        run: |
+          if [ -z "$MOTHERDUCK_TOKEN" ]; then
+            echo "::notice::MOTHERDUCK_TOKEN secret is not set; skipping the prod run."
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - if: steps.config.outputs.enabled == 'true'
+        uses: actions/checkout@v7.0.1
+      - if: steps.config.outputs.enabled == 'true'
+        uses: astral-sh/setup-uv@v10.3.3
+        with:
+          enable-cache: true
+
+      - name: Install project and Airflow environments
+        if: steps.config.outputs.enabled == 'true'
+        run: |
+          uv sync --locked
+          cd orchestration && uv sync --locked
+
+      - name: dbt deps and parse (Cosmos renders the DAG from the manifest)
+        if: steps.config.outputs.enabled == 'true'
+        run: cd transform && uv run dbt deps && uv run dbt parse
+
+      - name: Run DAG
+        if: steps.config.outputs.enabled == 'true'
+        env:
+          DAG_ID: ${{ inputs.dag || 'nba_daily' }}
+          SEASONS: ${{ inputs.seasons }}
+          FULL_REFRESH: ${{ inputs.full_refresh }}
+        run: |
+          export AIRFLOW_HOME="$RUNNER_TEMP/airflow" NBA_ALERTS_FILE="$RUNNER_TEMP/alerts.jsonl"
+          echo "NBA_ALERTS_FILE=$NBA_ALERTS_FILE" >> "$GITHUB_ENV"
+          cd orchestration
+          uv run airflow db migrate
+          if [ "$DAG_ID" = "nba_backfill" ] && [ -n "$SEASONS" ]; then
+            conf=$(python3 -c 'import json,os; print(json.dumps({"seasons": [int(s) for s in os.environ["SEASONS"].split(",")], "full_refresh": os.environ.get("FULL_REFRESH", "true") == "true"}))')
+            uv run airflow dags test "$DAG_ID" --conf "$conf"
+          else
+            uv run airflow dags test "$DAG_ID"
+          fi
+          # `dags test` exits 1 on a failed run; a non-empty alerts file is a second check.
+          if [ -s "$NBA_ALERTS_FILE" ]; then
+            echo "::error::Tasks failed:"; cat "$NBA_ALERTS_FILE"; exit 1
+          fi
+
+      - name: Save prod dbt state (Slim CI compares PRs against it)
+        if: steps.config.outputs.enabled == 'true' && success()
+        uses: actions/upload-artifact@v7.0.2
+        with:
+          name: prod-dbt-state
+          path: transform/target/manifest.json
+          retention-days: 30
+          overwrite: true
+
+      - name: Open or update a failure issue
+        if: failure() && steps.config.outputs.enabled == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          gh label create prod-failure --color B60205 --description "Scheduled prod run failed" 2>/dev/null || true
+          body="Prod run failed: $RUN_URL"$'\n\n'"Failed tasks:"$'\n```\n'"$(cat "${NBA_ALERTS_FILE:-/dev/null}" 2>/dev/null)"$'\n```'
+          existing=$(gh issue list --label prod-failure --state open --json number --jq '.[0].number')
+          if [ -n "$existing" ]; then
+            gh issue comment "$existing" --body "$body"
+          else
+            gh issue create --title "Prod run failing" --label prod-failure --body "$body"
+          fi
