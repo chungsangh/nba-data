@@ -18,12 +18,24 @@ models:
 
   - name: int_players_latest
     description: >
-      One row per player who has appeared in a box score, with attributes from their most recent
-      non-All-Star game. Feeds the snap_players snapshot.
+      One row per known player: everyone on a current-season roster plus everyone with a box
+      score. Team, jersey and position come from the current roster when the player is on one,
+      so signings and trades appear before the player's next game. Players on no roster have a
+      NULL team_id. Feeds the snap_players snapshot.
     columns:
       - name: player_id
         description: ESPN athlete id. Primary key.
         data_tests: [unique, not_null]
-      - name: team_id
-        description: Team of the player's most recent game.
+      - name: player_name
         data_tests: [not_null]
+      - name: team_id
+        description: Current roster team; NULL when the player is on no roster (free agent, retired).
+        data_tests:
+          - not_null:
+              config:
+                where: is_on_current_roster
+      - name: is_on_current_roster
+        description: True when the player is on a current-season roster.
+        data_tests: [not_null]
+      - name: last_game_team_id
+        description: Team in the player's most recent game; NULL if they have not played.

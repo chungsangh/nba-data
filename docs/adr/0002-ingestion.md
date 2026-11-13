@@ -17,7 +17,9 @@ GitHub Actions for free.
 ## Decision
 
 - Source: sportsdataverse-data releases (`espn_nba_pbp`, `espn_nba_schedules`,
-  `espn_nba_player_boxscores`, `espn_nba_team_boxscores`).
+  `espn_nba_player_boxscores`, `espn_nba_team_boxscores`, `espn_nba_rosters`).
+- Rosters are a point-in-time list (who is on each team today). Each load replaces it, and the
+  `snap_players` snapshot turns the daily changes into history.
 - Each load **replaces one season** of one dataset in a single transaction. Re-runs and backfills
   are idempotent; upstream stat corrections are picked up on the next daily load.
 - Every row gets lineage columns: `_load_id`, `_loaded_at`, `_source_url`,

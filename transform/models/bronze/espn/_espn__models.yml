@@ -68,6 +68,36 @@ models:
       - name: player_turnovers
         description: Turnovers credited to individual players.
 
+  - name: stg_espn__rosters
+    description: >
+      One row per player on a team's roster per season, as of the publisher's last refresh.
+      Height and weight are parsed from ESPN text (6' 5", 205 lbs).
+    columns:
+      - name: player_id
+        description: ESPN athlete id (sent as text, cast to integer).
+        data_tests: [not_null]
+      - name: team_id
+        data_tests: [not_null]
+      - name: season
+        data_tests: [not_null]
+      - name: roster_status
+        description: ESPN status type, e.g. active.
+      - name: height_inches
+        description: Height in inches.
+        data_tests:
+          - dbt_utils.accepted_range:
+              arguments:
+                min_value: 66
+                max_value: 96
+              config:
+                where: height_inches is not null
+      - name: weight_lbs
+        description: Weight in pounds.
+    data_tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns: [season, player_id]
+
   - name: stg_espn__plays
     description: >
       Play-by-play events, one row per play. Renamed and typed from the raw ESPN feed; no business

@@ -4,7 +4,7 @@ An NBA analytics engineering project built the way a 10-person data team would b
 **dbt + MetricFlow** on DuckDB/MotherDuck, medallion layers (bronze → silver → gold), governed
 metrics, and CI that lets many people change models safely.
 
-The data is real and refreshes daily: ESPN play-by-play, box scores and schedules, republished by
+The data is real and refreshes daily: ESPN play-by-play, box scores, schedules and rosters, republished by
 [sportsdataverse-data](https://github.com/sportsdataverse/sportsdataverse-data).
 
 > Status: **Phase 4, orchestration.** Airflow + Cosmos DAGs run the pipeline daily against MotherDuck.
@@ -45,9 +45,9 @@ sportsdataverse parquet ──► ingestion/ (Python) ──► raw schema ─�
 
 | Layer | Models | Highlights |
 |---|---|---|
-| **Bronze** | `stg_espn__plays`, `stg_espn__games`, `stg_espn__player_boxscores`, `stg_espn__team_boxscores` | Renamed and typed, UTC times, sentinel values nulled, empty placeholder rows dropped. |
+| **Bronze** | `stg_espn__plays`, `stg_espn__games`, `stg_espn__player_boxscores`, `stg_espn__team_boxscores`, `stg_espn__rosters` | Renamed and typed, UTC times, sentinel values nulled, empty placeholder rows dropped. |
 | **Silver** | `int_plays_sequenced`, `int_possessions_summarized`, `int_shots_located`, `int_games_classified`, `int_players_latest` | Chronological play order, possessions built from play-by-play, shot distance and zone measured to the basket each team attacked that half. |
-| **Gold** | `fct_team_games`, `fct_player_games`, `fct_possessions`, `fct_shots`; `dim_games`, `dim_teams`, `dim_players` (type 2), `dim_date` | Enforced contracts, relationship tests to every dimension. `fct_shots` is a microbatch incremental model, `fct_possessions` a lookback incremental model ([ADR 0003](docs/adr/0003-incremental-models-and-history.md)). |
+| **Gold** | `fct_team_games`, `fct_player_games`, `fct_possessions`, `fct_shots`; `dim_games`, `dim_teams`, `dim_players` (type 2 team/jersey/position from daily rosters, type 1 bio), `dim_date` | Enforced contracts, relationship tests to every dimension. `fct_shots` is a microbatch incremental model, `fct_possessions` a lookback incremental model ([ADR 0003](docs/adr/0003-incremental-models-and-history.md)). |
 
 A [`play_type_categories`](transform/seeds/play_type_categories.csv) seed classifies all 136 ESPN
 play types; a `schema_drift` test warns when ESPN introduces a new one.

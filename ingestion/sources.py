@@ -40,5 +40,8 @@ DATASETS: dict[str, Dataset] = {
             "espn_nba_player_boxscores", "espn_nba_player_boxscores", "player_box_{season}.parquet"
         ),
         Dataset("espn_nba_team_boxscores", "espn_nba_team_boxscores", "team_box_{season}.parquet"),
+        # Current roster per team; each daily load replaces it, and dbt's snap_players snapshot
+        # keeps the history of roster moves.
+        Dataset("espn_nba_rosters", "espn_nba_rosters", "rosters_{season}.parquet"),
     ]
 }

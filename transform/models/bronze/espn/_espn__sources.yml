@@ -33,3 +33,7 @@ sources:
         description: Player box scores. One row per player per game.
       - name: espn_nba_team_boxscores
         description: Team box scores. One row per team per game.
+      - name: espn_nba_rosters
+        description: >
+          Team rosters as of the publisher's last refresh. One row per player on a roster per
+          season; replaced on every load, so history lives in the snap_players snapshot.

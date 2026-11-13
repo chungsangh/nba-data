@@ -25,7 +25,14 @@ Both incremental models set `on_schema_change: fail`: with enforced contracts, a
 come with a deliberate `--full-refresh` (and, for public models, a new model version).
 
 Player history uses a `check` snapshot (`snap_players`) on team, jersey, position and name over
-`int_players_latest`. `dim_players` exposes it as type 2 (`valid_from`, `valid_to`, `is_current`).
+`int_players_latest`, where the current roster decides team, jersey and position (so trades and
+signings are captured on the day they appear, before the player's next game). `dim_players` is a
+hybrid: those tracked columns are type 2 (`valid_from`, `valid_to`, `is_current`); roster status
+and bio are type 1, joined from the source so every version shows today's values.
+
+Why type 1 columns don't come from the snapshot: when columns are added to a snapshot, existing
+versions get NULLs, and a player only gets a new version when a tracked column changes. Adding the
+roster fields that way left 474 of 522 current players with empty bio fields.
 
 ## Verification
 
@@ -37,6 +44,6 @@ Player history uses a `check` snapshot (`snap_players`) on team, jersey, positio
 ## Consequences
 
 - Corrections older than the lookback window need a targeted backfill or full refresh.
-- The snapshot only records changes from the first prod run onward. Past trades can be derived
-  from box scores (team per game) if needed later.
+- The snapshot only records changes from the first prod run (2026-11-13) onward. Earlier trades
+  can be derived from box scores (team per game) if needed.
 - The first microbatch run processes one batch per day since `date_spine_start` (~30 s on DuckDB).

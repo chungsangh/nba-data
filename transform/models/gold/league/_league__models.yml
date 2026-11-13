@@ -27,7 +27,7 @@ models:
         description: "Logo URL."
   - name: dim_players
     description: >
-      One row per player version (type 2, from snap_players). Filter is_current for today's attributes.
+      One row per player version. Team, jersey, position and name are type 2 (snap_players); roster status and bio are type 1. Filter is_current for today's attributes.
     columns:
       - name: player_version_id
         data_type: varchar
@@ -45,7 +45,7 @@ models:
         description: "Short name, e.g. J. Brunson."
       - name: team_id
         data_type: integer
-        description: "Team in this version."
+        description: "Roster team in this version; NULL when the player was on no roster."
       - name: jersey_number
         data_type: varchar
         description: "Jersey number in this version."
@@ -55,6 +55,27 @@ models:
       - name: headshot_url
         data_type: varchar
         description: "Headshot URL."
+      - name: is_on_current_roster
+        data_type: boolean
+        description: "On a current-season roster today (type 1: same on every version)."
+      - name: last_game_team_id
+        data_type: integer
+        description: "Team in the player's most recent game; NULL if they have not played (type 1)."
+      - name: height_inches
+        data_type: integer
+        description: "Height in inches (from the roster)."
+      - name: weight_lbs
+        data_type: integer
+        description: "Weight in pounds (from the roster)."
+      - name: birth_date
+        data_type: date
+        description: "Date of birth."
+      - name: birth_country
+        data_type: varchar
+        description: "Country of birth."
+      - name: experience_years
+        data_type: integer
+        description: "Years of NBA experience (ESPN)."
       - name: valid_from
         data_type: timestamp
         description: "When this version took effect: snapshot capture time, or 1900-01-01 for a player's first version."
