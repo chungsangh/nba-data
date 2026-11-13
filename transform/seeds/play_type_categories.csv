@@ -1,0 +1,138 @@
+play_type_id,play_type,play_category,is_possession_event
+7,No Violation,violation,false
+8,Delay of Game,violation,false
+9,Defensive Goaltending,violation,false
+10,Lane,violation,false
+11,Jump Ball,violation,false
+12,Kicked Ball,violation,false
+13,Double Lane,violation,false
+16,Full Timeout,timeout,false
+17,Short Timeout,timeout,false
+22,Personal Take Foul,foul,false
+24,Offensive Charge,foul,false
+25,Excess Timeout Technical,foul,false
+28,Delay Technical,foul,false
+29,Defensive 3-Seconds Technical,foul,false
+30,Double Technical Foul,foul,false
+31,Flagrant Foul Type 2,foul,false
+32,Flagrant Foul Type 1,foul,false
+33,Hanging Technical Foul,foul,false
+35,Technical Foul,foul,false
+36,Double Personal Foul,foul,false
+37,Clear Path Foul,foul,false
+40,Away from Play Foul,foul,false
+42,Offensive Foul,foul,false
+43,Loose Ball Foul,foul,false
+44,Shooting Foul,foul,false
+45,Personal Foul,foul,false
+47,Too Many Players Technical,foul,false
+48,Flopping Technical,foul,false
+61,No Turnover,other,false
+62,Bad Pass Turnover,turnover,true
+63,Lost Ball Turnover,turnover,true
+64,Traveling,turnover,true
+65,Double Dribble Turnover,turnover,true
+66,Disc Dribble Turnover,turnover,true
+67,3-Second Turnover,turnover,true
+68,5-Second Turnover,turnover,true
+69,8-Second Turnover,turnover,true
+70,Shot Clock Turnover,turnover,true
+71,Inbound Turnover,turnover,true
+72,Back Court Turnover,turnover,true
+73,Offensive Goaltending Turnover,turnover,true
+74,Lane Violation Turnover,turnover,true
+75,Jumpball Violation Turnover,turnover,true
+76,Kicked Ball Turnover,turnover,true
+77,Illegal Assist Turnover,turnover,true
+78,Palming Turnover,turnover,true
+80,Punched Ball Turnover,turnover,true
+84,Offensive Foul Turnover,turnover,true
+86,Out of Bounds - Step Turnover,turnover,true
+87,Out of Bounds - Lost Ball Turnover,turnover,true
+88,Excess Timeout Turnover,turnover,true
+89,Too Many Players Turnover,turnover,true
+90,Out of Bounds - Bad Pass Turnover,turnover,true
+91,No Shot (Default Shot),field_goal,true
+92,Jump Shot,field_goal,true
+93,Hook Shot,field_goal,true
+94,Tip Shot,field_goal,true
+95,Layup Shot,field_goal,true
+96,Dunk Shot,field_goal,true
+97,Free Throw - 1 of 1,free_throw,true
+98,Free Throw - 1 of 2,free_throw,true
+99,Free Throw - 2 of 2,free_throw,true
+100,Free Throw - 1 of 3,free_throw,true
+101,Free Throw - 2 of 3,free_throw,true
+102,Free Throw - 3 of 3,free_throw,true
+103,Free Throw - Technical,free_throw_technical,false
+104,Free Throw - Flagrant 1 of 2,free_throw,true
+105,Free Throw - Flagrant 2 of 2,free_throw,true
+106,Free Throw - Flagrant 1 of 1,free_throw,true
+107,Free Throw - Clear Path 1 of 2,free_throw,true
+108,Free Throw - Clear Path 2 of 2,free_throw,true
+109,Running Layup Shot,field_goal,true
+110,Driving Layup Shot,field_goal,true
+111,Alley Oop Layup Shot,field_goal,true
+112,Reverse Layup Shot,field_goal,true
+113,Running Jump Shot,field_goal,true
+114,Turnaround Jump Shot,field_goal,true
+115,Driving Dunk Shot,field_goal,true
+116,Running Dunk Shot,field_goal,true
+117,Reverse Dunk Shot,field_goal,true
+118,Alley Oop Dunk Shot,field_goal,true
+119,Driving Hook Shot,field_goal,true
+120,Turnaround Hook Shot,field_goal,true
+121,Fade Away Jump Shot,field_goal,true
+122,Jump Shot Bank,field_goal,true
+123,Hook Shot Bank,field_goal,true
+124,Finger Roll Layup,field_goal,true
+125,Layup Shot Putback,field_goal,true
+126,Layup Driving Reverse,field_goal,true
+127,Layup Running Reverse,field_goal,true
+128,Driving Finger Roll Layup,field_goal,true
+129,Running Finger Roll Layup,field_goal,true
+130,Floating Jump Shot,field_goal,true
+131,Pullup Jump Shot,field_goal,true
+132,Step Back Jump Shot,field_goal,true
+133,Pullup Bank Jump Shot,field_goal,true
+134,Driving Jump Shot Bank,field_goal,true
+135,Fade Away Bank Jump Shot,field_goal,true
+136,Turnaround Bank Jump Shot,field_goal,true
+137,Turnaround Fade Away Jump Shot,field_goal,true
+138,Putback Dunk Shot,field_goal,true
+139,Hook Driving Bank,field_goal,true
+140,Hook Turnaround Bank,field_goal,true
+141,Cutting Layup Shot,field_goal,true
+142,Cutting Finger Roll Layup Shot,field_goal,true
+143,Running Alley Oop Layup Shot,field_goal,true
+144,Driving Floating Jump Shot,field_goal,true
+145,Driving Floating Bank Jump Shot,field_goal,true
+146,Running Pullup Jump Shot,field_goal,true
+147,Step Back Bank Jump Shot,field_goal,true
+148,Turnaround Fadeaway Bank Jump Shot,field_goal,true
+149,Running Alley Oop Dunk Shot,field_goal,true
+150,Tip Dunk Shot,field_goal,true
+151,Cutting Dunk Shot,field_goal,true
+152,Driving Reverse Dunk Shot,field_goal,true
+153,Running Reverse Dunk Shot,field_goal,true
+155,Defensive Rebound,defensive_rebound,true
+156,Offensive Rebound,offensive_rebound,true
+157,Free Throw - Flagrant 1 of 3,free_throw,true
+165,Free Throw - Flagrant 2 of 3,free_throw,true
+166,Free Throw - Flagrant 3 of 3,free_throw,true
+206,5-Second Back to the Basket Turnover,turnover,true
+213,Challenge,review,false
+214,Coach's Challenge (Supported),review,false
+215,Coach's Challenge (Overturned),review,false
+216,Coach's Challenge (Stands),review,false
+257,Transition Take Foul,foul,false
+277,Coach's Challenge (replaycenter),review,false
+278,Ref-Initiated Review (Supported),review,false
+279,Ref-Initiated Review (Overturned),review,false
+280,Ref-Initiated Review (Stands),review,false
+282,Heave Jump Shot,field_goal,true
+402,End Game,game_end,false
+412,End Period,period_end,false
+517,Ejection,ejection,false
+584,Substitution,substitution,false
+615,Jumpball,jump_ball,false

@@ -1,0 +1,18 @@
+snapshots:
+  - name: snap_players
+    description: >
+      Type 2 history of player attributes. Each prod run compares the latest attributes with the
+      current version and closes it when the team, jersey, position or name changes, so trades
+      are captured with the date they first appeared in a box score.
+    relation: ref('int_players_latest')
+    config:
+      schema: snapshots
+      unique_key: player_id
+      strategy: check
+      check_cols: [team_id, jersey_number, position, player_name]
+      hard_deletes: ignore
+    columns:
+      - name: player_id
+        data_tests: [not_null]
+      - name: dbt_scd_id
+        data_tests: [unique]

@@ -46,4 +46,8 @@ aliasing = explicit
 aliasing = explicit
 
 [sqlfluff:rules:ambiguous.column_references]
-group_by_and_order_by_style = implicit
+group_by_and_order_by_style = explicit
+
+[sqlfluff:rules:references.keywords]
+# 'position' is the natural name for a player's position
+ignore_words = position
