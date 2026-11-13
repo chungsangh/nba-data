@@ -120,7 +120,8 @@ def main() -> int:
         for name, _, _ in CHECKS:
             run_saved_query(name, Path(tmp) / f"{name}.csv")
         # MetricFlow has released its connection; open the warehouse read-only for the SQL side.
-        con = duckdb.connect(os.environ["NBA_DUCKDB_PATH"], read_only=True)
+        warehouse = os.environ["NBA_DUCKDB_PATH"]
+        con = duckdb.connect(warehouse, read_only=not warehouse.startswith("md:"))
         for name, sql, keys in CHECKS:
             problems += compare(con, name, sql, keys, Path(tmp) / f"{name}.csv")
     for problem in problems:

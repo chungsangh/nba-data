@@ -41,3 +41,6 @@ select = ["E", "F", "I", "B", "UP", "SIM"]
 
 [tool.pytest.ini_options]
 testpaths = ["ingestion/tests", "scripts/tests"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["ingestion", "nba_config"]

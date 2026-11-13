@@ -1,6 +1,6 @@
 # Checked in on purpose: no secrets live here, only env var lookups.
 # dev / ci: a local DuckDB file filled by `nba-ingest`.
-# prod:     MotherDuck (added in Phase 4); token comes from MOTHERDUCK_TOKEN.
+# prod:     MotherDuck; the token comes from MOTHERDUCK_TOKEN (see docs/adr/0004).
 nba:
   target: "{{ env_var('DBT_TARGET', 'dev') }}"
   outputs:
@@ -21,7 +21,9 @@ nba:
       schema: lint
       threads: 1
     prod:
+      # MotherDuck by default (needs MOTHERDUCK_TOKEN). Point NBA_DUCKDB_PATH at a local file to
+      # rehearse a prod run with prod schema names (bronze/silver/gold) on your machine.
       type: duckdb
-      path: "md:{{ env_var('MOTHERDUCK_DATABASE', 'nba') }}"
+      path: "{{ env_var('NBA_DUCKDB_PATH', 'md:nba') }}"
       schema: main
       threads: 4

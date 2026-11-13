@@ -36,8 +36,16 @@ jobs:
           key: pre-commit-${{ hashFiles('.pre-commit-config.yaml') }}
       - name: pre-commit (ruff, sqlfluff, dbt-checkpoint)
         run: uv run pre-commit run --all-files --show-diff-on-failure
-      - name: Ingestion unit tests
+      - name: Python unit tests (ingestion, metric governance)
         run: uv run pytest
+      - name: Airflow DAG integrity tests
+        env:
+          # pre-commit's dbt parse wrote the manifest Cosmos renders from
+          NBA_DBT_MANIFEST: ${{ github.workspace }}/transform/target/lint/manifest.json
+          AIRFLOW__CORE__LOAD_EXAMPLES: "False"
+        run: |
+          export AIRFLOW_HOME="$RUNNER_TEMP/airflow"
+          cd orchestration && uv sync --locked && uv run airflow db migrate > /dev/null && uv run pytest
 
   dbt-build:
     name: dbt build

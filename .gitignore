@@ -11,3 +11,4 @@ logs/
 .user.yml
 .DS_Store
 .env
+orchestration/.airflow/
