@@ -1,0 +1,35 @@
+sources:
+  - name: espn
+    description: >
+      NBA data from ESPN, republished daily as parquet by the sportsdataverse-data project
+      (https://github.com/sportsdataverse/sportsdataverse-data) and loaded by `ingestion/`.
+      One row per record per season; each load replaces a whole season.
+    schema: raw
+    loaded_at_field: _source_published_at
+    config:
+      freshness:
+        # The publisher refreshes every morning (~07:30 ET) during the season.
+        warn_after: {count: 36, period: hour}
+        error_after: {count: 72, period: hour}
+    tables:
+      - name: espn_nba_plays
+        description: Play-by-play events. One row per play.
+        columns:
+          - name: id
+            description: ESPN play id, unique across all games.
+            data_tests:
+              - unique
+              - not_null
+          - name: game_id
+            data_tests:
+              - not_null
+          - name: season
+            data_tests:
+              - not_null
+
+      - name: espn_nba_schedules
+        description: Game schedule and results. One row per game.
+      - name: espn_nba_player_boxscores
+        description: Player box scores. One row per player per game.
+      - name: espn_nba_team_boxscores
+        description: Team box scores. One row per team per game.

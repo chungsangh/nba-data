@@ -1,0 +1,126 @@
+models:
+  - name: stg_espn__plays
+    description: >
+      Play-by-play events, one row per play. Renamed and typed from the raw ESPN feed; no business
+      logic. Times are UTC. Shot coordinates are feet from center court (x along the 94 ft length,
+      y along the 50 ft width) and are NULL for non-shooting plays.
+    columns:
+      - name: play_id
+        description: ESPN play id. Primary key.
+        data_tests:
+          - unique
+          - not_null
+      - name: game_id
+        description: ESPN game id.
+        data_tests:
+          - not_null
+      - name: season
+        description: ESPN season label; the 2025-26 season is 2026.
+        data_tests:
+          - not_null
+      - name: season_type
+        description: regular_season, playoffs or play_in, mapped from ESPN season_type codes.
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ["regular_season", "playoffs", "play_in"]
+      - name: sequence_number
+        description: >
+          ESPN ordering of plays within a game. Not fully reliable: a few games repeat a value and
+          scores sometimes go backwards in this order (see tests/bronze).
+      - name: period
+        description: 1-4 for quarters, 5+ for overtimes.
+        data_tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              arguments:
+                min_value: 1
+                max_value: 10
+      - name: play_type
+        description: Play type label with whitespace normalized, e.g. 'Bad Pass Turnover'.
+        data_tests:
+          - not_null
+      - name: points_scored
+        description: Points scored on this play (0 if none).
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: [0, 1, 2, 3]
+              config:
+                where: points_scored is not null
+      - name: shot_x
+        description: Shot location along the court length in feet from center; NULL if not a shot.
+        data_tests:
+          - dbt_utils.accepted_range:
+              arguments:
+                min_value: -47
+                max_value: 47
+              config:
+                where: shot_x is not null
+      - name: shot_y
+        description: Shot location along the court width in feet from center; NULL if not a shot.
+        data_tests:
+          - dbt_utils.accepted_range:
+              arguments:
+                min_value: -25
+                max_value: 25
+              config:
+                where: shot_y is not null
+      - name: game_start_at_utc
+        description: Scheduled tip-off, UTC.
+      - name: wallclock_at_utc
+        description: Real-world time the play was logged, UTC.
+      - name: _loaded_at
+        description: When our loader wrote the row.
+      - name: _source_published_at
+        description: When the publisher last refreshed the file this row came from.
+
+unit_tests:
+  - name: test_stg_espn__plays_cleans_labels_and_coordinates
+    description: >
+      Season type codes map to labels, embedded line breaks are removed from play types, the
+      non-shot coordinate sentinel becomes NULL, and timestamps are normalized to UTC.
+    model: stg_espn__plays
+    given:
+      - input: source('espn', 'espn_nba_plays')
+        rows:
+          - id: 1
+            game_id: 10
+            season_type: 3
+            type_text: "Bad Pass\nTurnover"
+            shooting_play: false
+            coordinate_x: -214748406.75
+            coordinate_y: -214748365.0
+            clock_minutes: 11
+            clock_seconds: 35.0
+            game_date_time: "2026-06-13 17:30:00-07:00"
+            wallclock: "2026-06-14T00:43:47Z"
+          - id: 2
+            game_id: 10
+            season_type: 5
+            type_text: "Jump Shot"
+            shooting_play: true
+            coordinate_x: 20.5
+            coordinate_y: -3.0
+            clock_minutes: 0
+            clock_seconds: 4.2
+            game_date_time: "2026-06-13 17:30:00-07:00"
+            wallclock: "not a timestamp"
+    expect:
+      rows:
+        - play_id: 1
+          season_type: playoffs
+          play_type: Bad Pass Turnover
+          shot_x: null
+          shot_y: null
+          period_seconds_remaining: 695.0
+          game_start_at_utc: "2026-06-14 00:30:00"
+          wallclock_at_utc: "2026-06-14 00:43:47"
+        - play_id: 2
+          season_type: play_in
+          play_type: Jump Shot
+          shot_x: 20.5
+          shot_y: -3.0
+          period_seconds_remaining: 4.2
+          game_start_at_utc: "2026-06-14 00:30:00"
+          wallclock_at_utc: null
