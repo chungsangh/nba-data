@@ -65,7 +65,7 @@ Simple metrics auto-created from measures (`create_metric: true`) to feed the me
 
 | Semantic model | Gold model | Description |
 |---|---|---|
-| `games` | `dim_games` | Scheduled games (gold dim_games). Adds venue and game-type context. |
+| `games` | `dim_games_v2` | Scheduled games (gold dim_games, latest version). Adds venue and game-type context. |
 | `player_games` | `fct_player_games` | One row per rostered player per game (gold fct_player_games). |
 | `players` | `dim_players` | Player versions (gold dim_players, type 2). MetricFlow joins the version that was valid at each fact's metric_time, so a traded player's stats group under the right attributes. |
 | `possessions` | `fct_possessions` | One row per possession (gold fct_possessions). Team is the offense. |

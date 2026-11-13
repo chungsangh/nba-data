@@ -13,14 +13,14 @@ semantic_models:
         type: categorical
 
   - name: games
-    description: Scheduled games (gold dim_games). Adds venue and game-type context.
+    description: Scheduled games (gold dim_games, latest version). Adds venue and game-type context.
     model: ref('dim_games')
     entities:
       - name: game
         type: primary
         expr: game_id
     dimensions:
-      - name: is_cup_championship
+      - name: game_type
         type: categorical
       - name: is_neutral_site
         type: categorical

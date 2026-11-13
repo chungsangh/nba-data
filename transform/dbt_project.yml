@@ -15,6 +15,18 @@ clean-targets: ["target", "dbt_packages"]
 flags:
   require_generic_test_arguments_property: true
 
+seeds:
+  nba:
+    # Our documented exceptions replace the package's empty default.
+    dbt_project_evaluator_exceptions:
+      +enabled: "{{ env_var('DBT_PROJECT_EVALUATOR', 'false') == 'true' }}"
+      +schema: project_evaluator
+  dbt_project_evaluator:
+    +enabled: "{{ env_var('DBT_PROJECT_EVALUATOR', 'false') == 'true' }}"
+    +schema: project_evaluator
+    dbt_project_evaluator_exceptions:
+      +enabled: false
+
 vars:
   # ESPN season_type codes -> readable labels, shared by bronze models and tests.
   season_types:
@@ -27,6 +39,11 @@ vars:
   # Days of games fct_possessions reprocesses on each incremental run (stat corrections).
   possession_lookback_days: 3
 
+  # dbt-project-evaluator: our layer folders use medallion names.
+  staging_folder_name: bronze
+  intermediate_folder_name: silver
+  marts_folder_name: gold
+
 models:
   nba:
     # Medallion layers. See STYLE_GUIDE.md for what belongs in each.
@@ -34,18 +51,42 @@ models:
       +schema: bronze
       +materialized: view
       +access: protected
+      +group: platform
     silver:
       +schema: silver
       +materialized: table
-      +access: protected
+      # Silver is each team's internal logic: private to the owning group by default.
+      +access: private
+      league:
+        +group: platform
+      game_events:
+        +group: game_analytics
     gold:
       +schema: gold
       +materialized: table
       +access: public
+      league:
+        +group: platform
+      game_events:
+        +group: game_analytics
       # Gold is the interface consumers and MetricFlow depend on: names and types are enforced.
       +contract:
         enforced: true
+  dbt_project_evaluator:
+    +enabled: "{{ env_var('DBT_PROJECT_EVALUATOR', 'false') == 'true' }}"
+    +schema: project_evaluator
 
 data_tests:
   nba:
     +store_failures: false
+    # Singular tests on play-by-play logic belong to the team that owns it, so they may read its
+    # private silver models.
+    silver:
+      +group: game_analytics
+    gold:
+      +group: game_analytics
+  # Project-structure checks run only when asked for (CI), never in prod or dev builds.
+  dbt_project_evaluator:
+    +enabled: "{{ env_var('DBT_PROJECT_EVALUATOR', 'false') == 'true' }}"
+    # CI sets DBT_PROJECT_EVALUATOR_SEVERITY=error so a new violation fails the PR.
+    +severity: "{{ env_var('DBT_PROJECT_EVALUATOR_SEVERITY', 'warn') }}"

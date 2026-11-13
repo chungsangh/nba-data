@@ -2,6 +2,8 @@ name: CI
 
 on:
   pull_request:
+    # labeled/unlabeled: re-run when a reviewer adds or removes approved-breaking-change
+    types: [opened, synchronize, reopened, labeled, unlabeled]
   push:
     branches: [main]
   workflow_dispatch:
@@ -51,30 +53,115 @@ jobs:
     name: dbt build
     needs: lint
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      actions: read # download main's baseline artifact
+      pull-requests: write # post the data diff comment
     env:
       DBT_TARGET: ci
-      # Every PR builds into its own schemas (ci_pr_<n>_bronze, ...).
+      # Every PR builds into its own schemas (ci_pr_<n>_bronze, ...); main builds ci_main_*.
       CI_SCHEMA_SUFFIX: ${{ github.event.pull_request.number && format('pr_{0}', github.event.pull_request.number) || 'main' }}
+      ALLOW_BREAKING_CHANGE: ${{ contains(github.event.pull_request.labels.*.name, 'approved-breaking-change') }}
     steps:
       - uses: actions/checkout@v7.0.1
+        with:
+          fetch-depth: 0 # to diff the PR against its base
       - uses: astral-sh/setup-uv@v10.3.3
         with:
           enable-cache: true
       - run: uv sync --locked
-      - name: Ingest current season
-        run: uv run nba-ingest
       - run: cd transform && uv run dbt deps
-      - name: dbt build (models, unit tests, data tests)
-        run: cd transform && uv run dbt build
-      - name: Semantic layer validation (MetricFlow, against the warehouse)
-        run: cd transform && uv run mf validate-configs
-      - name: Known-answer metric tests (MetricFlow vs independent SQL)
-        run: uv run python scripts/check_metrics.py
+
+      # Slim CI baseline: main's last successful CI run saved its built DuckDB file and dbt
+      # artifacts. PRs defer unchanged models to it instead of rebuilding them. No secrets needed.
+      - name: Fetch main's baseline
+        id: baseline
+        if: github.event_name == 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          changed=$(git diff --name-only "origin/$BASE_REF...HEAD")
+          if echo "$changed" | grep -qE '^(ingestion/|pyproject\.toml|uv\.lock)'; then
+            echo "::notice::Ingestion or dependencies changed: running a full build."
+            exit 0
+          fi
+          run_id=$(gh run list --workflow ci.yml --branch main --event push --status success \
+            --limit 1 --json databaseId --jq '.[0].databaseId')
+          if [ -n "$run_id" ] && gh run download "$run_id" --name ci-baseline --dir baseline; then
+            mkdir -p data && mv baseline/nba.duckdb data/nba.duckdb
+            echo "dir=$GITHUB_WORKSPACE/baseline" >> "$GITHUB_OUTPUT"
+            echo "Using baseline from run $run_id"
+          else
+            echo "::notice::No baseline from main yet: running a full build."
+          fi
+
+      - name: Ingest current season
+        if: steps.baseline.outputs.dir == ''
+        run: uv run nba-ingest
+
+      - name: dbt build, semantic layer checks, project evaluator
+        env:
+          BASELINE_DIR: ${{ steps.baseline.outputs.dir }}
+        run: scripts/ci_dbt.sh
+
       - name: Source freshness
         # Non-blocking: a stale upstream should alert, not block unrelated PRs.
+        if: steps.baseline.outputs.dir == ''
         continue-on-error: true
         run: cd transform && uv run dbt source freshness
+
+      - name: Generate catalog
+        run: cd transform && uv run dbt docs generate
+
+      - name: Data diff vs main (Recce)
+        id: recce
+        if: steps.baseline.outputs.dir != ''
+        continue-on-error: true
+        env:
+          BASELINE_DIR: ${{ steps.baseline.outputs.dir }}
+          RECCE_DISABLE_TELEMETRY: "1"
+        run: |
+          cd transform
+          uv run recce run --target-path target --target-base-path "$BASELINE_DIR" \
+            --output "$RUNNER_TEMP/recce_state.json" --summary "$RUNNER_TEMP/recce_summary.md"
+          {
+            echo '<!-- recce-data-diff -->'
+            head -c 60000 "$RUNNER_TEMP/recce_summary.md"
+            echo
+            echo '_Data diff of this PR vs main. Explore it: download the recce-state artifact, then run `recce server --review recce_state.json`._'
+          } > "$RUNNER_TEMP/comment.md"
+      - name: Post data diff on the PR
+        if: steps.recce.outcome == 'success'
+        continue-on-error: true # fork PRs get a read-only token
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.pull_request.number }}
+        run: |
+          gh pr comment "$PR" --edit-last --create-if-none --body-file "$RUNNER_TEMP/comment.md"
+      - name: Upload Recce state
+        if: steps.recce.outcome == 'success'
+        uses: actions/upload-artifact@v7.0.2
+        with:
+          name: recce-state
+          path: ${{ runner.temp }}/recce_state.json
+          retention-days: 14
+
+      - name: Stage baseline for PRs (main only)
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        run: |
+          mkdir -p "$RUNNER_TEMP/ci-baseline"
+          cp data/nba.duckdb transform/target/manifest.json transform/target/catalog.json \
+            "$RUNNER_TEMP/ci-baseline/"
+      - name: Save baseline for PRs (main only)
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        uses: actions/upload-artifact@v7.0.2
+        with:
+          name: ci-baseline
+          path: ${{ runner.temp }}/ci-baseline/
+          retention-days: 30
+
       - name: Upload dbt artifacts
         if: always()
         uses: actions/upload-artifact@v7.0.2
@@ -83,6 +170,5 @@ jobs:
           path: |
             transform/target/manifest.json
             transform/target/run_results.json
-            transform/target/sources.json
             transform/target/semantic_manifest.json
           retention-days: 14

@@ -6,7 +6,7 @@ export DBT_PROFILES_DIR := $(CURDIR)/transform
 SEASONS ?=
 DBT := cd transform && uv run dbt
 
-.PHONY: help setup ingest deps build test lint fmt docs freshness clean metrics metrics-catalog metrics-check airflow-setup airflow-ui airflow-test airflow-run
+.PHONY: help setup ingest deps build ci test lint fmt docs freshness clean metrics metrics-catalog metrics-check airflow-setup airflow-ui airflow-test airflow-run
 
 help: ## Show available commands
 	@grep -E '^[a-z-]+:.*## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*## "}; {printf "  \033[36m%-15s\033[0m %s\n", $$1, $$2}'
@@ -21,6 +21,9 @@ ingest: ## Load data (SEASONS="2026 2027"; default: current season)
 
 build: ## dbt build (models + unit tests + data tests)
 	$(DBT) build
+
+ci: ## Run the CI dbt checks locally (BASELINE_DIR=<main state> for Slim CI)
+	scripts/ci_dbt.sh
 
 test: ## Python tests and dbt unit tests only
 	uv run pytest

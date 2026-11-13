@@ -7,6 +7,7 @@ snapshots:
     relation: ref('int_players_latest')
     config:
       schema: snapshots
+      group: platform
       unique_key: player_id
       strategy: check
       check_cols: [team_id, jersey_number, position, player_name]

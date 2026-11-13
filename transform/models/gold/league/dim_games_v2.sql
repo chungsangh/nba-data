@@ -1,3 +1,5 @@
+{#- dim_games v2: one game_type column replaces the is_all_star and is_cup_championship flags. -#}
+
 with
 
 games as (
@@ -17,8 +19,7 @@ final as (
         cast(scheduled_start_at_utc as timestamp) as scheduled_start_at_utc,
         cast(game_status as varchar) as game_status,
         cast(is_completed as boolean) as is_completed,
-        cast(is_all_star as boolean) as is_all_star,
-        cast(is_cup_championship as boolean) as is_cup_championship,
+        cast(game_type as varchar) as game_type,
         cast(counts_toward_record as boolean) as counts_toward_record,
         cast(home_team_id as integer) as home_team_id,
         cast(away_team_id as integer) as away_team_id,
