@@ -40,6 +40,16 @@ bronze for trivial dims). Nothing reads "up" a layer.
 - Gold: `contract: {enforced: true}` plus relationship tests to dimensions.
 - Sources: freshness configured on every source.
 
+## Semantic layer
+
+- One semantic model per gold fact (`sem_<area>.yml`); dimension-only semantic models for dims.
+- Entities are named for the business object (`team`, `game`, `player`), never the column.
+- Measures that only feed other metrics use `create_metric: true`; published metrics are defined
+  explicitly with `label`, `description`, `config.meta.owner` and `config.meta.tier`.
+- Ratios are defined on summed measures (never an average of per-game ratios).
+- Saved queries are the only way BI and checks consume metrics.
+- Process for changing metrics: [CONTRIBUTING.md](CONTRIBUTING.md#changing-metrics).
+
 ## Documentation
 
 - Every model and every gold column has a description (enforced by dbt-checkpoint).

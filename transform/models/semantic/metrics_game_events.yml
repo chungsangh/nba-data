@@ -1,0 +1,128 @@
+# Possession, shot and player metrics. Owner/tier conventions: see metrics_team.yml.
+
+metrics:
+  # ---------------------------------------------------------------- possessions
+  - name: avg_possession_seconds
+    label: Seconds per possession
+    description: Average time from gaining the ball to the possession's last play.
+    type: ratio
+    type_params:
+      numerator: possession_seconds
+      denominator: possession_count
+    config:
+      meta: {owner: basketball_analytics, tier: certified}
+
+  - name: points_per_possession_after_turnover
+    label: Points per possession after a turnover
+    description: >
+      Points per possession for possessions that start right after the opponent turned it over.
+      A proxy for transition offense (ESPN does not flag fast breaks per play).
+    type: ratio
+    type_params:
+      numerator:
+        name: possession_points
+        filter: "{{ Dimension('possession__start_reason') }} = 'turnover'"
+      denominator:
+        name: possession_count
+        filter: "{{ Dimension('possession__start_reason') }} = 'turnover'"
+    config:
+      meta: {owner: basketball_analytics, tier: experimental}
+
+  - name: second_chance_conversion_rate
+    label: Second-chance conversion rate
+    description: Share of possessions with an offensive rebound that end with points.
+    type: ratio
+    type_params:
+      numerator: scoring_possessions_with_offensive_rebound
+      denominator: possessions_with_offensive_rebound
+    config:
+      meta: {owner: basketball_analytics, tier: certified}
+
+  # ---------------------------------------------------------------- shots
+  - name: shot_attempts
+    label: Shot attempts
+    description: Field goal attempts.
+    type: simple
+    type_params:
+      measure: shot_attempts
+    config:
+      meta: {owner: basketball_analytics, tier: certified}
+
+  - name: shot_fg_pct
+    label: FG% (shots)
+    description: Made / attempted field goals. Group by shot__shot_zone for a shot profile.
+    type: ratio
+    type_params:
+      numerator: shots_made
+      denominator: shot_attempts
+    config:
+      meta: {owner: basketball_analytics, tier: certified}
+
+  - name: points_per_shot
+    label: Points per shot
+    description: Points / field goal attempts (free throws excluded).
+    type: ratio
+    type_params:
+      numerator: shot_points
+      denominator: shot_attempts
+    config:
+      meta: {owner: basketball_analytics, tier: certified}
+
+  - name: corner_three_pct
+    label: Corner 3 %
+    description: FG% on threes from the corners (|y| of 22 ft or more).
+    type: ratio
+    type_params:
+      numerator:
+        name: shots_made
+        filter: "{{ Dimension('shot__shot_zone') }} = 'corner_three'"
+      denominator:
+        name: shot_attempts
+        filter: "{{ Dimension('shot__shot_zone') }} = 'corner_three'"
+    config:
+      meta: {owner: basketball_analytics, tier: certified}
+
+  - name: rim_attempt_share
+    label: Rim attempt share
+    description: Share of field goal attempts taken in the restricted area (under 4 ft).
+    type: ratio
+    type_params:
+      # the alias keeps MetricFlow from merging the filtered and unfiltered inputs
+      numerator:
+        name: shot_attempts
+        alias: rim_attempts
+        filter: "{{ Dimension('shot__shot_zone') }} = 'restricted_area'"
+      denominator: shot_attempts
+    config:
+      meta: {owner: basketball_analytics, tier: certified}
+
+  # ---------------------------------------------------------------- players
+  - name: player_points_per_game
+    label: Player points per game
+    description: Points per game played (games with minutes).
+    type: ratio
+    type_params:
+      numerator: player_points
+      denominator: player_games_played
+    config:
+      meta: {owner: basketball_analytics, tier: certified}
+
+  - name: player_minutes_per_game
+    label: Player minutes per game
+    description: Minutes per game played.
+    type: ratio
+    type_params:
+      numerator: player_minutes
+      denominator: player_games_played
+    config:
+      meta: {owner: basketball_analytics, tier: certified}
+
+  - name: player_true_shooting_pct
+    label: Player true shooting %
+    description: Points / (2 x (FGA + 0.44 x FTA)) for a player.
+    type: ratio
+    type_params:
+      numerator: player_points
+      denominator: player_true_shooting_attempts
+    config:
+      meta: {owner: basketball_analytics, tier: certified}

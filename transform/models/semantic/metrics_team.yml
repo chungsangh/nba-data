@@ -1,0 +1,199 @@
+# Team metrics. Every metric declares an owner and a tier:
+#   certified    - definition reviewed, known-answer tested, safe for external use
+#   experimental - useful but with a documented caveat; may change without a deprecation period
+# Changing a certified metric's definition requires the owner's review (see CONTRIBUTING.md).
+
+metrics:
+  # ---------------------------------------------------------------- results
+  - name: games_played
+    label: Games played
+    description: Team-games played.
+    type: simple
+    type_params:
+      measure: team_games_played
+    config:
+      meta: {owner: analytics_engineering, tier: certified}
+
+  - name: wins
+    label: Wins
+    description: Team-games won.
+    type: simple
+    type_params:
+      measure: team_wins
+    config:
+      meta: {owner: analytics_engineering, tier: certified}
+
+  - name: win_pct
+    label: Win %
+    description: Wins / games played.
+    type: ratio
+    type_params:
+      numerator: wins
+      denominator: games_played
+    config:
+      meta: {owner: analytics_engineering, tier: certified}
+
+  - name: season_to_date_wins
+    label: Wins to date
+    description: >
+      Running total of wins. Filter on team_game__season to get season-to-date; without a filter
+      it accumulates across seasons.
+    type: cumulative
+    type_params:
+      measure: team_wins
+    config:
+      meta: {owner: analytics_engineering, tier: certified}
+
+  - name: wins_last_30_days
+    label: Wins, last 30 days
+    description: Wins in the trailing 30 days. Calendar window, so it spans the All-Star break.
+    type: cumulative
+    type_params:
+      measure: team_wins
+      cumulative_type_params:
+        window: 30 days
+    config:
+      meta: {owner: analytics_engineering, tier: experimental}
+
+  - name: points_per_game
+    label: Points per game
+    description: Points / games played.
+    type: ratio
+    type_params:
+      numerator: team_points
+      denominator: games_played
+    config:
+      meta: {owner: analytics_engineering, tier: certified}
+
+  # ---------------------------------------------------------------- efficiency
+  - name: possessions
+    label: Possessions
+    description: Offensive possessions, counted from play-by-play.
+    type: simple
+    type_params:
+      measure: possessions
+    config:
+      meta: {owner: analytics_engineering, tier: certified}
+
+  - name: points_per_possession
+    label: Points per possession
+    description: Points / possessions, over games with play-by-play.
+    type: ratio
+    type_params:
+      numerator: rated_points
+      denominator: possessions
+    config:
+      meta: {owner: analytics_engineering, tier: certified}
+
+  - name: opponent_points_per_possession
+    label: Opponent points per possession
+    description: Points allowed / opponent possessions, over games with play-by-play.
+    type: ratio
+    type_params:
+      numerator: rated_opponent_points
+      denominator: opponent_possessions
+    config:
+      meta: {owner: analytics_engineering, tier: certified}
+
+  - name: offensive_rating
+    label: Offensive rating
+    description: Points scored per 100 possessions.
+    type: derived
+    type_params:
+      expr: points_per_possession * 100
+      metrics:
+        - name: points_per_possession
+    config:
+      meta: {owner: analytics_engineering, tier: certified}
+
+  - name: defensive_rating
+    label: Defensive rating
+    description: Points allowed per 100 opponent possessions. Lower is better.
+    type: derived
+    type_params:
+      expr: opponent_points_per_possession * 100
+      metrics:
+        - name: opponent_points_per_possession
+    config:
+      meta: {owner: analytics_engineering, tier: certified}
+
+  - name: net_rating
+    label: Net rating
+    description: Offensive rating minus defensive rating.
+    type: derived
+    type_params:
+      expr: offensive_rating - defensive_rating
+      metrics:
+        - name: offensive_rating
+        - name: defensive_rating
+    config:
+      meta: {owner: analytics_engineering, tier: certified}
+
+  - name: pace
+    label: Pace
+    description: >
+      Average possessions per team per game: (possessions + opponent possessions) / 2 / games.
+      Not adjusted to 48 minutes, so overtime games raise it slightly.
+    type: derived
+    type_params:
+      expr: (team_possessions + opp_possessions) / (2 * games_rated)
+      metrics:
+        - name: possessions
+          alias: team_possessions
+        - name: opponent_possessions
+          alias: opp_possessions
+        - name: games_with_possessions
+          alias: games_rated
+    config:
+      meta: {owner: analytics_engineering, tier: experimental}
+
+  - name: turnover_rate
+    label: Turnover rate
+    description: Turnovers per possession.
+    type: ratio
+    type_params:
+      numerator: rated_turnovers
+      denominator: possessions
+    config:
+      meta: {owner: analytics_engineering, tier: certified}
+
+  # ---------------------------------------------------------------- shooting and rebounding
+  - name: effective_fg_pct
+    label: Effective FG%
+    description: (FGM + 0.5 x 3PM) / FGA. Credits threes for their extra point.
+    type: ratio
+    type_params:
+      numerator: effective_field_goals
+      denominator: field_goals_attempted
+    config:
+      meta: {owner: analytics_engineering, tier: certified}
+
+  - name: true_shooting_pct
+    label: True shooting %
+    description: Points / (2 x (FGA + 0.44 x FTA)). Scoring efficiency including free throws.
+    type: ratio
+    type_params:
+      numerator: team_points
+      denominator: true_shooting_attempts
+    config:
+      meta: {owner: analytics_engineering, tier: certified}
+
+  - name: three_point_attempt_rate
+    label: 3-point attempt rate
+    description: Share of field goal attempts that are threes.
+    type: ratio
+    type_params:
+      numerator: three_pointers_attempted
+      denominator: field_goals_attempted
+    config:
+      meta: {owner: analytics_engineering, tier: certified}
+
+  - name: offensive_rebound_pct
+    label: Offensive rebound %
+    description: Offensive rebounds / (offensive rebounds + opponent defensive rebounds).
+    type: ratio
+    type_params:
+      numerator: offensive_rebounds
+      denominator: offensive_rebound_chances
+    config:
+      meta: {owner: analytics_engineering, tier: certified}

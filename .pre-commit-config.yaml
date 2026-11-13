@@ -22,43 +22,53 @@ repos:
         args: [--fix]
       - id: ruff-format
 
-  # Parse the dbt project so the dbt-checkpoint hooks below read a fresh manifest.
+  # Parse the dbt project so the hooks below read a fresh manifest. Hooks compile with the
+  # in-memory `lint` target into target/lint, so they never overwrite the dev artifacts in
+  # target/ that MetricFlow and state comparison rely on.
   - repo: local
     hooks:
       - id: dbt-parse
         name: dbt parse
-        entry: bash -c 'cd transform && DBT_PROFILES_DIR=. DBT_TARGET=lint uv run dbt parse --quiet'
+        entry: bash -c 'cd transform && DBT_PROFILES_DIR=. DBT_TARGET=lint DBT_TARGET_PATH=target/lint uv run dbt parse --quiet'
         language: system
         files: ^transform/
         pass_filenames: false
       - id: sqlfluff-lint
         name: sqlfluff lint
-        entry: uv run sqlfluff lint
+        entry: env DBT_TARGET_PATH=target/lint uv run sqlfluff lint
         language: system
         files: ^transform/(models|tests|analyses|snapshots)/.*\.sql$
+      - id: metrics-catalog
+        name: metric governance + METRICS.md up to date
+        entry: uv run python scripts/metrics_catalog.py --check --manifest transform/target/lint/semantic_manifest.json
+        language: system
+        files: ^(transform/models/semantic/|scripts/metrics_catalog\.py|METRICS\.md)
+        pass_filenames: false
 
   - repo: https://github.com/dbt-checkpoint/dbt-checkpoint
     rev: v2.0.10
     hooks:
       - id: check-model-has-description
         files: ^transform/models/
+        args: [--manifest, transform/target/lint/manifest.json]
       - id: check-model-has-properties-file
         files: ^transform/models/
+        args: [--manifest, transform/target/lint/manifest.json]
       - id: check-model-has-tests
         files: ^transform/models/
-        args: [--test-cnt, "1", "--"]
+        args: [--manifest, transform/target/lint/manifest.json, --test-cnt, "1", "--"]
       - id: check-model-name-contract
         name: bronze models are named stg_<source>__<entity>
         files: ^transform/models/bronze/
-        args: [--pattern, "^stg_[a-z0-9]+__[a-z0-9_]+$", "--"]
+        args: [--manifest, transform/target/lint/manifest.json, --pattern, "^stg_[a-z0-9]+__[a-z0-9_]+$", "--"]
       - id: check-model-name-contract
         name: silver models are named int_<entity>_<verb>
         files: ^transform/models/silver/
-        args: [--pattern, "^int_[a-z0-9_]+$", "--"]
+        args: [--manifest, transform/target/lint/manifest.json, --pattern, "^int_[a-z0-9_]+$", "--"]
       - id: check-model-name-contract
         name: gold models are named fct_ / dim_
         files: ^transform/models/gold/
-        args: [--pattern, "^(fct|dim)_[a-z0-9_]+$", "--"]
+        args: [--manifest, transform/target/lint/manifest.json, --pattern, "^(fct|dim)_[a-z0-9_]+$", "--"]
       - id: check-source-has-freshness
         files: ^transform/models/.*sources\.yml$
-        args: [--freshness, error_after, warn_after, "--"]
+        args: [--manifest, transform/target/lint/manifest.json, --freshness, error_after, warn_after, "--"]

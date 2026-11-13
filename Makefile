@@ -6,7 +6,7 @@ export DBT_PROFILES_DIR := $(CURDIR)/transform
 SEASONS ?=
 DBT := cd transform && uv run dbt
 
-.PHONY: help setup ingest deps build test lint fmt docs freshness clean
+.PHONY: help setup ingest deps build test lint fmt docs freshness clean metrics metrics-catalog metrics-check
 
 help: ## Show available commands
 	@grep -E '^[a-z-]+:.*## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*## "}; {printf "  \033[36m%-10s\033[0m %s\n", $$1, $$2}'
@@ -25,6 +25,17 @@ build: ## dbt build (models + unit tests + data tests)
 test: ## Python tests and dbt unit tests only
 	uv run pytest
 	$(DBT) test --select "test_type:unit"
+
+metrics: ## Query a metric, e.g. make metrics M=offensive_rating G=team__team_abbreviation
+	cd transform && uv run mf query --metrics $(M) $(if $(G),--group-by $(G))
+
+metrics-catalog: ## Regenerate METRICS.md from the semantic layer
+	$(DBT) parse --quiet
+	uv run python scripts/metrics_catalog.py
+
+metrics-check: ## Validate the semantic layer and run known-answer metric tests
+	cd transform && uv run mf validate-configs
+	uv run python scripts/check_metrics.py
 
 freshness: ## Check source freshness
 	$(DBT) source freshness

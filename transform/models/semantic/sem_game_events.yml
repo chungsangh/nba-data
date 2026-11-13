@@ -1,0 +1,143 @@
+semantic_models:
+  - name: possessions
+    description: One row per possession (gold fct_possessions). Team is the offense.
+    model: ref('fct_possessions')
+    defaults:
+      agg_time_dimension: game_date
+    entities:
+      - name: possession
+        type: primary
+        expr: possession_id
+      - name: team
+        type: foreign
+        expr: offense_team_id
+      - name: game
+        type: foreign
+        expr: game_id
+    dimensions:
+      - name: game_date
+        type: time
+        type_params:
+          time_granularity: day
+      - name: season
+        type: categorical
+      - name: season_type
+        type: categorical
+      - name: start_reason
+        type: categorical
+      - name: period
+        type: categorical
+    measures:
+      - name: possession_count
+        create_metric: true
+        agg: sum
+        expr: "1"
+      - name: possession_points
+        create_metric: true
+        agg: sum
+        expr: points
+      - name: possession_seconds
+        create_metric: true
+        agg: sum
+        expr: duration_seconds
+      - name: possessions_with_offensive_rebound
+        create_metric: true
+        agg: sum
+        expr: case when offensive_rebounds > 0 then 1 else 0 end
+      - name: scoring_possessions_with_offensive_rebound
+        create_metric: true
+        agg: sum
+        expr: case when offensive_rebounds > 0 and is_scoring_possession then 1 else 0 end
+
+  - name: shots
+    description: One row per field goal attempt (gold fct_shots). Player is the shooter.
+    model: ref('fct_shots')
+    defaults:
+      agg_time_dimension: game_date
+    entities:
+      - name: shot
+        type: primary
+        expr: shot_id
+      - name: team
+        type: foreign
+        expr: team_id
+      - name: game
+        type: foreign
+        expr: game_id
+      - name: player
+        type: foreign
+        expr: shooter_player_id
+    dimensions:
+      - name: game_date
+        type: time
+        type_params:
+          time_granularity: day
+      - name: season
+        type: categorical
+      - name: season_type
+        type: categorical
+      - name: shot_zone
+        type: categorical
+      - name: shot_value
+        type: categorical
+      - name: period
+        type: categorical
+    measures:
+      - name: shot_attempts
+        agg: count
+        expr: shot_id
+      - name: shots_made
+        create_metric: true
+        agg: sum
+        expr: case when is_made then 1 else 0 end
+      - name: shot_points
+        create_metric: true
+        agg: sum
+        expr: points
+
+  - name: player_games
+    description: One row per rostered player per game (gold fct_player_games).
+    model: ref('fct_player_games')
+    defaults:
+      agg_time_dimension: game_date
+    entities:
+      - name: player_game
+        type: primary
+        expr: player_game_id
+      - name: player
+        type: foreign
+        expr: player_id
+      - name: team
+        type: foreign
+        expr: team_id
+      - name: game
+        type: foreign
+        expr: game_id
+    dimensions:
+      - name: game_date
+        type: time
+        type_params:
+          time_granularity: day
+      - name: season
+        type: categorical
+      - name: season_type
+        type: categorical
+      - name: is_starter
+        type: categorical
+    measures:
+      - name: player_games_played
+        create_metric: true
+        agg: sum
+        expr: case when not did_not_play then 1 else 0 end
+      - name: player_minutes
+        create_metric: true
+        agg: sum
+        expr: minutes_played
+      - name: player_points
+        create_metric: true
+        agg: sum
+        expr: points
+      - name: player_true_shooting_attempts
+        create_metric: true
+        agg: sum
+        expr: 2 * (field_goals_attempted + 0.44 * free_throws_attempted)

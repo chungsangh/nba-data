@@ -7,7 +7,7 @@ metrics, and CI that lets many people change models safely.
 The data is real and refreshes daily: ESPN play-by-play, box scores and schedules, republished by
 [sportsdataverse-data](https://github.com/sportsdataverse/sportsdataverse-data).
 
-> Status: **Phase 2, medallion layers.** Bronze, silver and contracted gold models are in place.
+> Status: **Phase 3, semantic layer.** Governed MetricFlow metrics sit on top of contracted gold models.
 > See the [roadmap](#roadmap) and the full [project plan](docs/project-plan.md).
 
 ## Quick start
@@ -36,7 +36,9 @@ sportsdataverse parquet ──► ingestion/ (Python) ──► raw schema ─�
 | [`ingestion/`](ingestion/) | Downloads season files, replaces one season per load in a transaction, adds lineage columns, logs every load, handles upstream schema drift. Tested with pytest. |
 | [`transform/`](transform/) | The dbt project. `models/bronze`, `silver`, `gold`, `semantic`. |
 | [`docs/adr/`](docs/adr/) | Architecture decision records: why each choice was made. |
+| [`scripts/`](scripts/) | Metrics catalog generator with governance rules, known-answer metric checks. |
 | [`STYLE_GUIDE.md`](STYLE_GUIDE.md) | Layer rules, naming, SQL style, testing standards. |
+| [`METRICS.md`](METRICS.md) | Every metric: definition, owner, tier. Generated. |
 
 ## Data model
 
@@ -52,6 +54,31 @@ play types; a `schema_drift` test warns when ESPN introduces a new one.
 Sanity check on the possession builder across 2025-26: 14.5 seconds per possession and 114.7 points
 per 100 possessions, and possessions after a turnover are the fastest and most efficient.
 
+## Semantic layer
+
+MetricFlow semantic models on every gold fact, with 29 published metrics (26 certified, 3
+experimental), each with an owner and a tier. The full list is in **[METRICS.md](METRICS.md)**,
+generated from the YAML.
+
+```bash
+make metrics M=offensive_rating,defensive_rating,net_rating G=team__team_abbreviation
+cd transform && uv run mf query --saved-query league_shot_profile
+```
+
+2025-26 regular season, from the `team_ratings_by_season` saved query:
+
+| Team | Win % | Off. rating | Def. rating | Net rating |
+|---|---|---|---|---|
+| OKC | .780 | 118.5 | 107.2 | +11.3 |
+| SA | .756 | 119.4 | 111.2 | +8.3 |
+| DET | .732 | 117.9 | 109.7 | +8.2 |
+
+And the shot-value curve from `league_shot_profile`: 1.36 points per shot at the rim, 1.14 on
+corner threes, 1.04 on above-the-break threes, 0.83 from mid-range.
+
+How metrics are governed (owners, tiers, certified-can't-depend-on-experimental, known-answer
+tests) is in [CONTRIBUTING.md](CONTRIBUTING.md#changing-metrics).
+
 ## Quality gates
 
 Every commit (pre-commit) and every pull request (GitHub Actions) runs:
@@ -66,6 +93,9 @@ Every commit (pre-commit) and every pull request (GitHub Actions) runs:
 - **Reconciliation tests**: box-score points must match play-by-play scoring (fails if more than 10
   team-games disagree), every completed game has exactly two mirrored team rows, and
   play-by-play possessions stay close to the box-score estimate.
+- **Semantic layer**: `mf validate-configs` against the warehouse; metric governance rules and an
+  up-to-date METRICS.md; **known-answer metric tests** that compare certified saved queries with
+  independently written SQL (a deliberately wrong eFG% formula is caught).
 - **Source freshness**, reported without blocking unrelated PRs.
 
 Known upstream data issues are tracked as warning-level tests tagged `known_issue`, so they stay
@@ -80,7 +110,7 @@ score corrections.
    dimensions with contracts; incremental models with lookback for stat corrections; player history
    snapshot. ✅ (On-court lineup stints are deferred to a follow-up.)
 3. **Semantic layer** — MetricFlow semantic models and metrics (offensive/defensive/net rating,
-   pace, eFG%, TS%, season-to-date and rolling metrics), saved queries, metric ownership and tiers.
+   pace, eFG%, TS%, season-to-date and rolling metrics), saved queries, metric ownership and tiers. ✅
 4. **Orchestration & prod** — Airflow + Astronomer Cosmos DAGs, MotherDuck prod, scheduled runs,
    backfills, alerts, dbt docs site.
 5. **Team-scale CI & governance** — Slim CI with `state:modified+ --defer`, Recce data diffs on PRs,
