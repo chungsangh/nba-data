@@ -1,0 +1,163 @@
+models:
+  - name: int_plays_sequenced
+    description: >
+      One row per play in chronological order (game_play_number, not ESPN's sequence_number), with
+      play categories, elapsed game time and the possession each play belongs to. A new possession
+      starts when the team on a possession event (shot, free throw, turnover, rebound) changes, or
+      a new period begins. Plays before the opening possession have a NULL possession_number.
+    columns:
+      - name: play_id
+        description: ESPN play id. Primary key.
+        data_tests: [unique, not_null]
+      - name: play_index
+        description: 1-based chronological position of the play within its game.
+        data_tests: [not_null]
+      - name: possession_number
+        description: 1-based possession counter within the game.
+      - name: game_seconds_elapsed
+        description: Seconds since tip-off (12-minute quarters, 5-minute overtimes).
+        data_tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              arguments:
+                min_value: 0
+      - name: play_category
+        description: Grouping from the play_type_categories seed; 'other' if unclassified.
+        data_tests: [not_null]
+    data_tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns: [game_id, play_index]
+
+  - name: int_possessions_summarized
+    description: >
+      One row per possession. The offense is the team on the possession's first possession event.
+      A possession starts when the previous one ended (or at the start of a period) and its points
+      count only the offense's field goals and free throws; technical free throws are excluded.
+    columns:
+      - name: possession_id
+        description: Surrogate key of game_id and possession_number. Primary key.
+        data_tests: [unique, not_null]
+      - name: offense_team_id
+        data_tests: [not_null]
+      - name: defense_team_id
+        data_tests: [not_null]
+      - name: start_reason
+        description: period_start, defensive_rebound, turnover, opponent_score or other.
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ["period_start", "defensive_rebound", "turnover", "opponent_score", "other"]
+      - name: duration_seconds
+        description: Seconds from when the ball changed hands to the possession's last play.
+        data_tests:
+          - dbt_utils.accepted_range:
+              arguments:
+                min_value: 0
+      - name: points
+        description: Points the offense scored, excluding technical free throws.
+        data_tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              arguments:
+                min_value: 0
+                max_value: 8
+
+  - name: int_shots_located
+    config:
+      # Lets microbatch models (fct_shots) read only the batch's time window.
+      event_time: game_start_at_utc
+    description: >
+      One row per field goal attempt with distance to the basket the shooting team attacked that
+      half, and a court zone. Free throws are excluded.
+    columns:
+      - name: shot_id
+        description: ESPN play id of the shot. Primary key.
+        data_tests: [unique, not_null]
+      - name: shooter_player_id
+        data_tests: [not_null]
+      - name: shot_distance_ft
+        description: Distance from the basket in feet.
+        data_tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              arguments:
+                min_value: 0
+                max_value: 95
+      - name: shot_zone
+        description: >
+          restricted_area (under 4 ft), paint, mid_range, corner_three, above_break_three, or
+          backcourt (shot from the far half).
+        data_tests:
+          - accepted_values:
+              arguments:
+                values:
+                  ["restricted_area", "paint", "mid_range", "corner_three", "above_break_three", "backcourt"]
+
+unit_tests:
+  - name: test_int_plays_sequenced_numbers_possessions
+    description: >
+      Miss, offensive rebound and make stay one possession; the opponent's defensive rebound,
+      the next team's turnover, and a new period each start a new possession; a foul by the
+      defense and a substitution inherit the possession in progress; plays before the opening
+      possession get NULL. Rows are fed out of game_play_number order to prove ordering.
+    model: int_plays_sequenced
+    given:
+      - input: ref('stg_espn__plays')
+        rows:
+          - {play_id: 1, game_id: 10, game_play_number: 1, play_type_id: 615, team_id: null, period: 1, period_seconds_remaining: 720.0}
+          - {play_id: 3, game_id: 10, game_play_number: 3, play_type_id: 155, team_id: 2, period: 1, period_seconds_remaining: 690.0}
+          - {play_id: 2, game_id: 10, game_play_number: 2, play_type_id: 92, team_id: 1, period: 1, period_seconds_remaining: 700.0}
+          - {play_id: 4, game_id: 10, game_play_number: 4, play_type_id: 156, team_id: 2, period: 1, period_seconds_remaining: 688.0}
+          - {play_id: 5, game_id: 10, game_play_number: 5, play_type_id: 45, team_id: 1, period: 1, period_seconds_remaining: 686.0}
+          - {play_id: 6, game_id: 10, game_play_number: 6, play_type_id: 110, team_id: 2, period: 1, period_seconds_remaining: 684.0}
+          - {play_id: 7, game_id: 10, game_play_number: 7, play_type_id: 584, team_id: 1, period: 1, period_seconds_remaining: 684.0}
+          - {play_id: 8, game_id: 10, game_play_number: 8, play_type_id: 62, team_id: 1, period: 1, period_seconds_remaining: 670.0}
+          - {play_id: 9, game_id: 10, game_play_number: 9, play_type_id: 92, team_id: 2, period: 2, period_seconds_remaining: 700.0}
+      - input: ref('play_type_categories')
+        rows:
+          - {play_type_id: 615, play_category: jump_ball, is_possession_event: false}
+          - {play_type_id: 92, play_category: field_goal, is_possession_event: true}
+          - {play_type_id: 155, play_category: defensive_rebound, is_possession_event: true}
+          - {play_type_id: 156, play_category: offensive_rebound, is_possession_event: true}
+          - {play_type_id: 45, play_category: foul, is_possession_event: false}
+          - {play_type_id: 110, play_category: field_goal, is_possession_event: true}
+          - {play_type_id: 584, play_category: substitution, is_possession_event: false}
+          - {play_type_id: 62, play_category: turnover, is_possession_event: true}
+    expect:
+      rows:
+        - {play_id: 1, play_index: 1, possession_number: null, game_seconds_elapsed: 0.0}
+        - {play_id: 2, play_index: 2, possession_number: 1, game_seconds_elapsed: 20.0}
+        - {play_id: 3, play_index: 3, possession_number: 2, game_seconds_elapsed: 30.0}
+        - {play_id: 4, play_index: 4, possession_number: 2, game_seconds_elapsed: 32.0}
+        - {play_id: 5, play_index: 5, possession_number: 2, game_seconds_elapsed: 34.0}
+        - {play_id: 6, play_index: 6, possession_number: 2, game_seconds_elapsed: 36.0}
+        - {play_id: 7, play_index: 7, possession_number: 2, game_seconds_elapsed: 36.0}
+        - {play_id: 8, play_index: 8, possession_number: 3, game_seconds_elapsed: 50.0}
+        - {play_id: 9, play_index: 9, possession_number: 4, game_seconds_elapsed: 740.0}
+
+  - name: test_int_shots_located_measures_to_the_attacked_basket
+    description: >
+      A team's basket for the half is where most of its shots landed. A heave from the far half is
+      'backcourt' and measured to the far basket; corner and above-the-break threes, restricted
+      area and paint are classified from distance and position.
+    model: int_shots_located
+    given:
+      - input: ref('int_plays_sequenced')
+        rows:
+          - {play_id: 1, period: 1, shot_x: 41.75, shot_y: 0.0, points_attempted: 2, is_scoring_play: true, play_type: Dunk, game_id: 10, team_id: 2, play_category: field_goal, points_scored: 2}
+          - {play_id: 2, period: 1, shot_x: 30.0, shot_y: 5.0, points_attempted: 2, is_scoring_play: false, play_type: Jump Shot, game_id: 10, team_id: 2, play_category: field_goal, points_scored: 2}
+          - {play_id: 3, period: 1, shot_x: 25.0, shot_y: 0.0, points_attempted: 2, is_scoring_play: true, play_type: Jump Shot, game_id: 10, team_id: 2, play_category: field_goal, points_scored: 2}
+          - {play_id: 4, period: 1, shot_x: 40.0, shot_y: 23.0, points_attempted: 3, is_scoring_play: false, play_type: Jump Shot, game_id: 10, team_id: 2, play_category: field_goal, points_scored: 2}
+          - {play_id: 5, period: 1, shot_x: 16.75, shot_y: 0.0, points_attempted: 3, is_scoring_play: true, play_type: Jump Shot, game_id: 10, team_id: 2, play_category: field_goal, points_scored: 2}
+          - {play_id: 6, period: 1, shot_x: -30.0, shot_y: 0.0, points_attempted: 3, is_scoring_play: false, play_type: Heave, game_id: 10, team_id: 2, play_category: field_goal, points_scored: 2}
+          - {play_id: 7, period: 3, shot_x: -41.75, shot_y: 3.0, points_attempted: 2, is_scoring_play: true, play_type: Layup, game_id: 10, team_id: 2, play_category: field_goal, points_scored: 2}
+    expect:
+      rows:
+        - {shot_id: 1, shot_distance_ft: 0.0, shot_zone: restricted_area}
+        - {shot_id: 2, shot_distance_ft: 12.8, shot_zone: paint}
+        - {shot_id: 3, shot_distance_ft: 16.8, shot_zone: mid_range}
+        - {shot_id: 4, shot_distance_ft: 23.1, shot_zone: corner_three}
+        - {shot_id: 5, shot_distance_ft: 25.0, shot_zone: above_break_three}
+        - {shot_id: 6, shot_distance_ft: 71.8, shot_zone: backcourt}
+        - {shot_id: 7, shot_distance_ft: 3.0, shot_zone: restricted_area}

@@ -1,0 +1,163 @@
+models:
+  - name: dim_teams
+    description: >
+      One row per NBA franchise, with attributes from its most recent game.
+    columns:
+      - name: team_id
+        data_type: integer
+        description: "ESPN team id. Primary key."
+        data_tests: [unique, not_null]
+      - name: team_abbreviation
+        data_type: varchar
+        description: "Abbreviation, e.g. NY."
+      - name: team_location
+        data_type: varchar
+        description: "City or region."
+      - name: team_name
+        data_type: varchar
+        description: "Nickname, e.g. Knicks."
+      - name: team_display_name
+        data_type: varchar
+        description: "Full name, e.g. New York Knicks."
+      - name: team_color
+        data_type: varchar
+        description: "Primary color hex."
+      - name: team_logo_url
+        data_type: varchar
+        description: "Logo URL."
+  - name: dim_players
+    description: >
+      One row per player version (type 2, from snap_players). Filter is_current for today's attributes.
+    columns:
+      - name: player_version_id
+        data_type: varchar
+        description: "Snapshot version id. Primary key."
+        data_tests: [unique, not_null]
+      - name: player_id
+        data_type: integer
+        description: "ESPN athlete id."
+        data_tests: [not_null]
+      - name: player_name
+        data_type: varchar
+        description: "Full name."
+      - name: player_short_name
+        data_type: varchar
+        description: "Short name, e.g. J. Brunson."
+      - name: team_id
+        data_type: integer
+        description: "Team in this version."
+      - name: jersey_number
+        data_type: varchar
+        description: "Jersey number in this version."
+      - name: position
+        data_type: varchar
+        description: "Position abbreviation (G, F, C, ...)."
+      - name: headshot_url
+        data_type: varchar
+        description: "Headshot URL."
+      - name: valid_from
+        data_type: timestamp
+        description: "When this version was first captured."
+      - name: valid_to
+        data_type: timestamp
+        description: "When it was replaced; NULL for the current version."
+      - name: is_current
+        data_type: boolean
+        description: "True for the current version."
+  - name: dim_games
+    description: >
+      One row per scheduled game, including future, postponed and All-Star games.
+    columns:
+      - name: game_id
+        data_type: integer
+        description: "ESPN game id. Primary key."
+        data_tests: [unique, not_null]
+      - name: season
+        data_type: integer
+        description: "ESPN season label; the 2025-26 season is 2026."
+      - name: season_type
+        data_type: varchar
+        description: "regular_season, playoffs or play_in."
+      - name: playoff_round
+        data_type: varchar
+        description: "first_round, conference_semifinals, conference_finals or finals; NULL outside the playoffs."
+      - name: game_date
+        data_type: date
+        description: "Game date, US Eastern."
+      - name: scheduled_start_at_utc
+        data_type: timestamp
+        description: "Scheduled tip-off, UTC."
+      - name: game_status
+        data_type: varchar
+        description: "scheduled, final, postponed, ..."
+      - name: is_completed
+        data_type: boolean
+        description: "True once final."
+      - name: is_all_star
+        data_type: boolean
+        description: "All-Star events (excluded from facts)."
+      - name: is_cup_championship
+        data_type: boolean
+        description: "NBA Cup championship game."
+      - name: counts_toward_record
+        data_type: boolean
+        description: "False for the NBA Cup championship."
+      - name: home_team_id
+        data_type: integer
+        description: "Home team."
+      - name: away_team_id
+        data_type: integer
+        description: "Away team."
+      - name: home_score
+        data_type: integer
+        description: "Final home score."
+      - name: away_score
+        data_type: integer
+        description: "Final away score."
+      - name: winning_team_id
+        data_type: integer
+        description: "Winner; NULL until final."
+      - name: venue_name
+        data_type: varchar
+        description: "Arena."
+      - name: venue_city
+        data_type: varchar
+        description: "Arena city."
+      - name: is_neutral_site
+        data_type: boolean
+        description: "Neutral-site game (e.g. international games)."
+      - name: attendance
+        data_type: integer
+        description: "Reported attendance."
+      - name: broadcast_network
+        data_type: varchar
+        description: "National broadcast, if any."
+      - name: game_note
+        data_type: varchar
+        description: "ESPN note, e.g. series game number or makeup date."
+  - name: dim_date
+    description: >
+      One row per calendar day. MetricFlow time spine.
+    columns:
+      - name: date_day
+        data_type: date
+        description: "Calendar date. Primary key."
+        data_tests: [unique, not_null]
+      - name: day_name
+        data_type: varchar
+        description: "Weekday name."
+      - name: day_of_week
+        data_type: integer
+        description: "ISO weekday, 1 = Monday."
+      - name: is_weekend
+        data_type: boolean
+        description: "Saturday or Sunday."
+      - name: week_start_date
+        data_type: date
+        description: "Monday of the week."
+      - name: month_start_date
+        data_type: date
+        description: "First day of the month."
+      - name: season
+        data_type: integer
+        description: "ESPN season label the date falls in."

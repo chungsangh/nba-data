@@ -1,0 +1,29 @@
+models:
+  - name: int_games_classified
+    description: >
+      One row per scheduled game with business classifications: playoff round, All-Star and NBA
+      Cup championship flags, whether the game counts toward team records, the US Eastern game
+      date the league uses, and the winner.
+    columns:
+      - name: game_id
+        description: ESPN game id. Primary key.
+        data_tests: [unique, not_null]
+      - name: game_date
+        description: Game date in US Eastern time.
+        data_tests: [not_null]
+      - name: counts_toward_record
+        description: False for All-Star games and the NBA Cup championship.
+      - name: winning_team_id
+        description: NULL until the game is final.
+
+  - name: int_players_latest
+    description: >
+      One row per player who has appeared in a box score, with attributes from their most recent
+      non-All-Star game. Feeds the snap_players snapshot.
+    columns:
+      - name: player_id
+        description: ESPN athlete id. Primary key.
+        data_tests: [unique, not_null]
+      - name: team_id
+        description: Team of the player's most recent game.
+        data_tests: [not_null]

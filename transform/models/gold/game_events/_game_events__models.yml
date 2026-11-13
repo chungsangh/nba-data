@@ -1,0 +1,410 @@
+models:
+  - name: fct_team_games
+    description: >
+      One row per team per completed game, excluding All-Star games. Box score stats from ESPN; possessions from play-by-play.
+    columns:
+      - name: team_game_id
+        data_type: varchar
+        description: "Surrogate key of game_id and team_id. Primary key."
+        data_tests: [unique, not_null]
+      - name: game_id
+        data_type: integer
+        description: "ESPN game id."
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_games')
+                field: game_id
+      - name: team_id
+        data_type: integer
+        description: "ESPN team id."
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_teams')
+                field: team_id
+      - name: opponent_team_id
+        data_type: integer
+        description: "ESPN team id of the opponent."
+        data_tests:
+          - relationships:
+              arguments:
+                to: ref('dim_teams')
+                field: team_id
+      - name: game_date
+        data_type: date
+        description: "Game date, US Eastern."
+        data_tests:
+          - relationships:
+              arguments:
+                to: ref('dim_date')
+                field: date_day
+      - name: season
+        data_type: integer
+        description: "ESPN season label; the 2025-26 season is 2026."
+      - name: season_type
+        data_type: varchar
+        description: "regular_season, playoffs or play_in."
+      - name: playoff_round
+        data_type: varchar
+        description: "first_round, conference_semifinals, conference_finals or finals; NULL outside the playoffs."
+      - name: is_home
+        data_type: boolean
+        description: "True for the home team."
+      - name: counts_toward_record
+        data_type: boolean
+        description: "False for the NBA Cup championship."
+      - name: is_win
+        data_type: boolean
+        description: "True if this team won."
+      - name: points
+        data_type: integer
+        description: "Points scored."
+        data_tests: [not_null]
+      - name: opponent_points
+        data_type: integer
+        description: "Points allowed."
+      - name: possessions
+        data_type: integer
+        description: "Offensive possessions, counted from play-by-play. NULL for the rare game ESPN publishes without play-by-play."
+      - name: opponent_possessions
+        data_type: integer
+        description: "Opponent's offensive possessions, counted from play-by-play. NULL without play-by-play."
+      - name: field_goals_made
+        data_type: integer
+        description: "Field goals made."
+      - name: field_goals_attempted
+        data_type: integer
+        description: "Field goals attempted."
+      - name: three_pointers_made
+        data_type: integer
+        description: "Three-pointers made."
+      - name: three_pointers_attempted
+        data_type: integer
+        description: "Three-pointers attempted."
+      - name: free_throws_made
+        data_type: integer
+        description: "Free throws made."
+      - name: free_throws_attempted
+        data_type: integer
+        description: "Free throws attempted."
+      - name: offensive_rebounds
+        data_type: integer
+        description: "Offensive rebounds."
+      - name: defensive_rebounds
+        data_type: integer
+        description: "Defensive rebounds."
+      - name: assists
+        data_type: integer
+        description: "Assists."
+      - name: steals
+        data_type: integer
+        description: "Steals."
+      - name: blocks
+        data_type: integer
+        description: "Blocks."
+      - name: turnovers
+        data_type: integer
+        description: "Turnovers, including team turnovers."
+      - name: fouls
+        data_type: integer
+        description: "Personal fouls."
+      - name: fast_break_points
+        data_type: integer
+        description: "Fast-break points (ESPN)."
+      - name: points_in_paint
+        data_type: integer
+        description: "Points in the paint (ESPN)."
+      - name: points_off_turnovers
+        data_type: integer
+        description: "Points off turnovers (ESPN)."
+      - name: opponent_field_goals_made
+        data_type: integer
+        description: "Opponent field goals made."
+      - name: opponent_field_goals_attempted
+        data_type: integer
+        description: "Opponent field goals attempted."
+      - name: opponent_three_pointers_made
+        data_type: integer
+        description: "Opponent three-pointers made."
+      - name: opponent_free_throws_attempted
+        data_type: integer
+        description: "Opponent free throws attempted."
+      - name: opponent_offensive_rebounds
+        data_type: integer
+        description: "Opponent offensive rebounds."
+      - name: opponent_defensive_rebounds
+        data_type: integer
+        description: "Opponent defensive rebounds."
+      - name: opponent_turnovers
+        data_type: integer
+        description: "Opponent turnovers, including team turnovers."
+  - name: fct_player_games
+    description: >
+      One row per rostered player per game, excluding All-Star games.
+    columns:
+      - name: player_game_id
+        data_type: varchar
+        description: "Surrogate key of game_id and player_id. Primary key."
+        data_tests: [unique, not_null]
+      - name: game_id
+        data_type: integer
+        description: "ESPN game id."
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_games')
+                field: game_id
+      - name: player_id
+        data_type: integer
+        description: "ESPN athlete id."
+        data_tests: [not_null]
+      - name: team_id
+        data_type: integer
+        description: "Player's team in this game."
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_teams')
+                field: team_id
+      - name: opponent_team_id
+        data_type: integer
+        description: "ESPN team id of the opponent."
+      - name: game_date
+        data_type: date
+        description: "Game date, US Eastern."
+      - name: season
+        data_type: integer
+        description: "ESPN season label; the 2025-26 season is 2026."
+      - name: season_type
+        data_type: varchar
+        description: "regular_season, playoffs or play_in."
+      - name: is_home
+        data_type: boolean
+        description: "True for the home team."
+      - name: is_starter
+        data_type: boolean
+        description: "Started the game."
+      - name: did_not_play
+        data_type: boolean
+        description: "On the roster but did not play."
+      - name: did_not_play_reason
+        data_type: varchar
+        description: "ESPN reason, e.g. COACH'S DECISION."
+      - name: minutes_played
+        data_type: double
+        description: "Minutes played."
+      - name: points
+        data_type: integer
+        description: "Points scored."
+      - name: field_goals_made
+        data_type: integer
+        description: "Field goals made."
+      - name: field_goals_attempted
+        data_type: integer
+        description: "Field goals attempted."
+      - name: three_pointers_made
+        data_type: integer
+        description: "Three-pointers made."
+      - name: three_pointers_attempted
+        data_type: integer
+        description: "Three-pointers attempted."
+      - name: free_throws_made
+        data_type: integer
+        description: "Free throws made."
+      - name: free_throws_attempted
+        data_type: integer
+        description: "Free throws attempted."
+      - name: offensive_rebounds
+        data_type: integer
+        description: "Offensive rebounds."
+      - name: defensive_rebounds
+        data_type: integer
+        description: "Defensive rebounds."
+      - name: assists
+        data_type: integer
+        description: "Assists."
+      - name: steals
+        data_type: integer
+        description: "Steals."
+      - name: blocks
+        data_type: integer
+        description: "Blocks."
+      - name: turnovers
+        data_type: integer
+        description: "Turnovers, including team turnovers."
+      - name: fouls
+        data_type: integer
+        description: "Personal fouls."
+      - name: plus_minus
+        data_type: integer
+        description: "Point differential while on court."
+  - name: fct_possessions
+    description: >
+      One row per possession, excluding All-Star games. Incremental: reprocesses the last possession_lookback_days days of games on each run.
+    columns:
+      - name: possession_id
+        data_type: varchar
+        description: "Surrogate key of game_id and possession_number. Primary key."
+        data_tests: [unique, not_null]
+      - name: game_id
+        data_type: integer
+        description: "ESPN game id."
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_games')
+                field: game_id
+      - name: possession_number
+        data_type: integer
+        description: "1-based possession counter within the game."
+      - name: offense_team_id
+        data_type: integer
+        description: "Team with the ball."
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_teams')
+                field: team_id
+      - name: defense_team_id
+        data_type: integer
+        description: "Team defending."
+        data_tests:
+          - relationships:
+              arguments:
+                to: ref('dim_teams')
+                field: team_id
+      - name: game_date
+        data_type: date
+        description: "Game date, US Eastern."
+      - name: season
+        data_type: integer
+        description: "ESPN season label; the 2025-26 season is 2026."
+      - name: season_type
+        data_type: varchar
+        description: "regular_season, playoffs or play_in."
+      - name: period
+        data_type: integer
+        description: "Period the possession started in."
+      - name: start_reason
+        data_type: varchar
+        description: "period_start, defensive_rebound, turnover, opponent_score or other."
+      - name: started_at_game_seconds
+        data_type: double
+        description: "Seconds since tip-off when the ball changed hands."
+      - name: duration_seconds
+        data_type: double
+        description: "Possession length in seconds."
+      - name: points
+        data_type: integer
+        description: "Points scored by the offense, excluding technical free throws."
+        data_tests: [not_null]
+      - name: is_scoring_possession
+        data_type: boolean
+        description: "True if the offense scored."
+      - name: field_goals_attempted
+        data_type: integer
+        description: "Offense field goal attempts."
+      - name: field_goals_made
+        data_type: integer
+        description: "Offense field goals made."
+      - name: three_pointers_attempted
+        data_type: integer
+        description: "Offense three-point attempts."
+      - name: free_throws_attempted
+        data_type: integer
+        description: "Offense free throw attempts (excluding technicals)."
+      - name: offensive_rebounds
+        data_type: integer
+        description: "Offensive rebounds."
+      - name: turnovers
+        data_type: integer
+        description: "1 if the possession ended in a turnover."
+  - name: fct_shots
+    description: >
+      One row per field goal attempt, excluding All-Star games. Microbatch incremental by tip-off day with a 3-day lookback.
+    columns:
+      - name: shot_id
+        data_type: bigint
+        description: "ESPN play id of the shot. Primary key."
+        data_tests: [unique, not_null]
+      - name: game_id
+        data_type: integer
+        description: "ESPN game id."
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_games')
+                field: game_id
+      - name: possession_number
+        data_type: integer
+        description: "Possession the shot belongs to."
+      - name: team_id
+        data_type: integer
+        description: "Shooting team."
+        data_tests:
+          - relationships:
+              arguments:
+                to: ref('dim_teams')
+                field: team_id
+      - name: shooter_player_id
+        data_type: integer
+        description: "Shooter."
+        data_tests: [not_null]
+      - name: assisting_player_id
+        data_type: integer
+        description: "Assisting player on a made shot."
+      - name: blocking_player_id
+        data_type: integer
+        description: "Blocker on a blocked shot."
+      - name: game_date
+        data_type: date
+        description: "Game date, US Eastern."
+      - name: game_start_at_utc
+        data_type: timestamp
+        description: "Tip-off, UTC. Microbatch event time."
+      - name: season
+        data_type: integer
+        description: "ESPN season label; the 2025-26 season is 2026."
+      - name: season_type
+        data_type: varchar
+        description: "regular_season, playoffs or play_in."
+      - name: period
+        data_type: integer
+        description: "Period."
+      - name: game_seconds_elapsed
+        data_type: double
+        description: "Seconds since tip-off."
+      - name: shot_type
+        data_type: varchar
+        description: "ESPN shot type, e.g. Pullup Jump Shot."
+      - name: shot_value
+        data_type: integer
+        description: "2 or 3."
+      - name: shot_zone
+        data_type: varchar
+        description: "restricted_area, paint, mid_range, corner_three, above_break_three or backcourt."
+        data_tests: [not_null]
+      - name: shot_distance_ft
+        data_type: double
+        description: "Distance from the basket, feet."
+      - name: shot_x
+        data_type: double
+        description: "Feet from center court along the length."
+      - name: shot_y
+        data_type: double
+        description: "Feet from center court along the width."
+      - name: is_made
+        data_type: boolean
+        description: "True if made."
+        data_tests: [not_null]
+      - name: points
+        data_type: integer
+        description: "Points scored (0 on a miss)."

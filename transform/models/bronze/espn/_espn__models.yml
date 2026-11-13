@@ -1,4 +1,73 @@
 models:
+  - name: stg_espn__games
+    description: >
+      One row per scheduled game, including future, postponed, playoff, play-in, NBA Cup and
+      All-Star games. Scores are NULL until the game is played.
+    columns:
+      - name: game_id
+        description: ESPN game id. Primary key.
+        data_tests: [unique, not_null]
+      - name: home_team_id
+        data_tests: [not_null]
+      - name: away_team_id
+        data_tests: [not_null]
+      - name: season_type
+        description: regular_season, playoffs or play_in.
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ["regular_season", "playoffs", "play_in"]
+      - name: game_type_code
+        description: >
+          ESPN game type. STD regular game, RD16/QTR/SEMI/FINAL playoff rounds, CC NBA Cup
+          championship, ALLSTAR All-Star events.
+      - name: game_status
+        description: scheduled, in_progress, final, postponed, canceled (ESPN STATUS_* lowercased).
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ["scheduled", "in_progress", "halftime", "end_period", "final", "postponed", "canceled", "delayed"]
+      - name: scheduled_start_at_utc
+        description: Scheduled tip-off, UTC.
+        data_tests: [not_null]
+      - name: home_score
+        description: Final home score; NULL before the game.
+      - name: away_score
+        description: Final away score; NULL before the game.
+
+  - name: stg_espn__player_boxscores
+    description: One row per player per game, including players who did not play.
+    columns:
+      - name: player_game_id
+        description: Surrogate key of game_id and player_id. Primary key.
+        data_tests: [unique, not_null]
+      - name: game_id
+        data_tests: [not_null]
+      - name: player_id
+        description: ESPN athlete id.
+        data_tests: [not_null]
+      - name: team_id
+        data_tests: [not_null]
+      - name: plus_minus
+        description: Point differential while on court, parsed from ESPN text like '+2'.
+      - name: minutes_played
+        description: Minutes played; NULL when the player did not play.
+
+  - name: stg_espn__team_boxscores
+    description: One row per team per game (two rows per completed game).
+    columns:
+      - name: team_game_id
+        description: Surrogate key of game_id and team_id. Primary key.
+        data_tests: [unique, not_null]
+      - name: game_id
+        data_tests: [not_null]
+      - name: team_id
+        data_tests: [not_null]
+      - name: turnovers
+        description: All turnovers, including team turnovers such as shot-clock violations.
+      - name: player_turnovers
+        description: Turnovers credited to individual players.
+
   - name: stg_espn__plays
     description: >
       Play-by-play events, one row per play. Renamed and typed from the raw ESPN feed; no business
@@ -26,8 +95,23 @@ models:
                 values: ["regular_season", "playoffs", "play_in"]
       - name: sequence_number
         description: >
-          ESPN ordering of plays within a game. Not fully reliable: a few games repeat a value and
-          scores sometimes go backwards in this order (see tests/bronze).
+          ESPN event sequence. Not chronological: the running score goes backwards thousands of
+          times in this order. Use game_play_number (or silver play_index) to order plays.
+      - name: game_play_number
+        description: Chronological play order within a game.
+        data_tests: [not_null]
+      - name: play_type_id
+        description: ESPN play type id. Every id must be classified in the play_type_categories seed.
+        data_tests:
+          - relationships:
+              arguments:
+                to: ref('play_type_categories')
+                field: play_type_id
+              config:
+                # A new upstream play type should be classified, but must not stop prod runs.
+                severity: warn
+                tags: ["schema_drift"]
+                where: play_type_id <> 0
       - name: period
         description: 1-4 for quarters, 5+ for overtimes.
         data_tests:

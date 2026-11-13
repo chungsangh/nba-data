@@ -21,6 +21,11 @@ vars:
     2: regular_season
     3: playoffs
     5: play_in
+  # Calendar range for dim_date and the first fct_shots microbatch.
+  date_spine_start: "2024-08-01"
+  date_spine_end: "2027-08-01"
+  # Days of games fct_possessions reprocesses on each incremental run (stat corrections).
+  possession_lookback_days: 3
 
 models:
   nba:
@@ -37,6 +42,9 @@ models:
       +schema: gold
       +materialized: table
       +access: public
+      # Gold is the interface consumers and MetricFlow depend on: names and types are enforced.
+      +contract:
+        enforced: true
 
 data_tests:
   nba:

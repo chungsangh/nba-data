@@ -1,0 +1,46 @@
+seeds:
+  - name: play_type_categories
+    description: >
+      Hand-maintained classification of every ESPN play type. play_category groups types for
+      analysis; is_possession_event marks plays whose team_id is the team with the ball, which the
+      silver layer uses to number possessions. When ESPN adds a play type, the schema_drift test on
+      stg_espn__plays warns and the new id is added here in a PR.
+    config:
+      schema: reference
+      column_types:
+        play_type_id: integer
+        play_type: varchar
+        play_category: varchar
+        is_possession_event: boolean
+    columns:
+      - name: play_type_id
+        description: ESPN play type id.
+        data_tests: [unique, not_null]
+      - name: play_type
+        description: ESPN label at the time the seed was written.
+      - name: play_category
+        description: Analysis grouping.
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values:
+                  - field_goal
+                  - free_throw
+                  - free_throw_technical
+                  - turnover
+                  - offensive_rebound
+                  - defensive_rebound
+                  - foul
+                  - violation
+                  - timeout
+                  - review
+                  - substitution
+                  - jump_ball
+                  - period_end
+                  - game_end
+                  - ejection
+                  - other
+      - name: is_possession_event
+        description: True when the play's team_id identifies the team in possession.
+        data_tests: [not_null]
