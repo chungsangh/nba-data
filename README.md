@@ -95,6 +95,7 @@ nba_backfill  reload chosen seasons ─► dbt build --full-refresh ─► metri
 - **Prod** runs on a GitHub Actions schedule ([`prod.yml`](.github/workflows/prod.yml)) that
   executes the same DAG headless against MotherDuck, saves the prod dbt manifest, and opens a
   `prod-failure` issue when a task fails. Why not hosted Airflow: [ADR 0004](docs/adr/0004-orchestration-airflow-on-actions.md).
+  Setting up the MotherDuck token safely: [docs/prod-setup.md](docs/prod-setup.md).
 - **Locally**: `make airflow-setup` once, then `make airflow-ui` for the Airflow UI or
   `make airflow-run` to run `nba_daily` headless against your local DuckDB.
 - **Docs**: [`docs.yml`](.github/workflows/docs.yml) publishes the dbt docs site (lineage, model

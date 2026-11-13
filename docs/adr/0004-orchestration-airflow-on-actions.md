@@ -31,7 +31,9 @@ are paid. Prefect Cloud has a free tier but is not Airflow.
   to `NBA_ALERTS_FILE`; the workflow opens (or comments on) a `prod-failure` issue with it.
   `airflow dags test` exits 1 when the run fails (verified on 3.3.2 by forcing a failure); the
   workflow also fails if the alerts file is non-empty, as a second check.
-- **Warehouse**: MotherDuck free plan (`md:nba`, token in the `MOTHERDUCK_TOKEN` secret).
+- **Warehouse**: MotherDuck free plan (`md:nba`). The token is a `prod` environment secret that
+  only deploys from `main`, and only the steps that connect to MotherDuck receive it
+  ([docs/prod-setup.md](../prod-setup.md)).
   Ingestion creates the database on first run. A local DuckDB file allows one writer, so DAGs run
   one task at a time against a file and four at a time against MotherDuck.
 - **Freshness** runs last with `trigger_rule="all_done"` and no retries: stale upstream data alerts
