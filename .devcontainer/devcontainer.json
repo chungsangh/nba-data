@@ -1,0 +1,14 @@
+{
+  "name": "nba-data",
+  "image": "mcr.microsoft.com/devcontainers/python:1-3.12-bookworm",
+  "postCreateCommand": "pip install --user uv && make setup && make ingest && make build",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "innoverio.vscode-dbt-power-user",
+        "charliermarsh.ruff",
+        "sqlfluff.vscode-sqlfluff"
+      ]
+    }
+  }
+}

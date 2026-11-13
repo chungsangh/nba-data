@@ -1,0 +1,64 @@
+# Run `uv run pre-commit install` once; hooks then run on every commit.
+# CI runs the same hooks on every PR, so local and CI checks never disagree.
+default_language_version:
+  python: python3.12
+
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: check-yaml
+        args: [--unsafe] # dbt YAML uses jinja in some values
+      - id: end-of-file-fixer
+      - id: trailing-whitespace
+      - id: check-added-large-files
+        args: [--maxkb=1000] # raw data never belongs in git
+      - id: check-merge-conflict
+
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.17.2
+    hooks:
+      - id: ruff-check
+        args: [--fix]
+      - id: ruff-format
+
+  # Parse the dbt project so the dbt-checkpoint hooks below read a fresh manifest.
+  - repo: local
+    hooks:
+      - id: dbt-parse
+        name: dbt parse
+        entry: bash -c 'cd transform && DBT_PROFILES_DIR=. DBT_TARGET=lint uv run dbt parse --quiet'
+        language: system
+        files: ^transform/
+        pass_filenames: false
+      - id: sqlfluff-lint
+        name: sqlfluff lint
+        entry: uv run sqlfluff lint
+        language: system
+        files: ^transform/(models|tests|analyses|snapshots)/.*\.sql$
+
+  - repo: https://github.com/dbt-checkpoint/dbt-checkpoint
+    rev: v2.0.10
+    hooks:
+      - id: check-model-has-description
+        files: ^transform/models/
+      - id: check-model-has-properties-file
+        files: ^transform/models/
+      - id: check-model-has-tests
+        files: ^transform/models/
+        args: [--test-cnt, "1", "--"]
+      - id: check-model-name-contract
+        name: bronze models are named stg_<source>__<entity>
+        files: ^transform/models/bronze/
+        args: [--pattern, "^stg_[a-z0-9]+__[a-z0-9_]+$", "--"]
+      - id: check-model-name-contract
+        name: silver models are named int_<entity>_<verb>
+        files: ^transform/models/silver/
+        args: [--pattern, "^int_[a-z0-9_]+$", "--"]
+      - id: check-model-name-contract
+        name: gold models are named fct_ / dim_
+        files: ^transform/models/gold/
+        args: [--pattern, "^(fct|dim)_[a-z0-9_]+$", "--"]
+      - id: check-source-has-freshness
+        files: ^transform/models/.*sources\.yml$
+        args: [--freshness, error_after, warn_after, "--"]

@@ -1,0 +1,43 @@
+name: nba
+version: "0.1.0"
+config-version: 2
+profile: nba
+
+model-paths: ["models"]
+analysis-paths: ["analyses"]
+test-paths: ["tests"]
+seed-paths: ["seeds"]
+macro-paths: ["macros"]
+snapshot-paths: ["snapshots"]
+
+clean-targets: ["target", "dbt_packages"]
+
+flags:
+  require_generic_test_arguments_property: true
+
+vars:
+  # ESPN season_type codes -> readable labels, shared by bronze models and tests.
+  season_types:
+    2: regular_season
+    3: playoffs
+    5: play_in
+
+models:
+  nba:
+    # Medallion layers. See STYLE_GUIDE.md for what belongs in each.
+    bronze:
+      +schema: bronze
+      +materialized: view
+      +access: protected
+    silver:
+      +schema: silver
+      +materialized: table
+      +access: protected
+    gold:
+      +schema: gold
+      +materialized: table
+      +access: public
+
+data_tests:
+  nba:
+    +store_failures: false

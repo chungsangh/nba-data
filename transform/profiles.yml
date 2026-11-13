@@ -1,0 +1,27 @@
+# Checked in on purpose: no secrets live here, only env var lookups.
+# dev / ci: a local DuckDB file filled by `nba-ingest`.
+# prod:     MotherDuck (added in Phase 4); token comes from MOTHERDUCK_TOKEN.
+nba:
+  target: "{{ env_var('DBT_TARGET', 'dev') }}"
+  outputs:
+    dev:
+      type: duckdb
+      path: "{{ env_var('NBA_DUCKDB_PATH', '../data/nba.duckdb') }}"
+      schema: "dev_{{ env_var('USER', 'local') | lower }}"
+      threads: 4
+    ci:
+      type: duckdb
+      path: "{{ env_var('NBA_DUCKDB_PATH', '../data/nba.duckdb') }}"
+      schema: "ci_{{ env_var('CI_SCHEMA_SUFFIX', 'local') | lower }}"
+      threads: 4
+    lint:
+      # SQLFluff only needs to compile SQL; no data required.
+      type: duckdb
+      path: ":memory:"
+      schema: lint
+      threads: 1
+    prod:
+      type: duckdb
+      path: "md:{{ env_var('MOTHERDUCK_DATABASE', 'nba') }}"
+      schema: main
+      threads: 4
