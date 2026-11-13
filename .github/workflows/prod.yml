@@ -22,9 +22,10 @@ on:
         type: boolean
         default: true
 
+# Least privilege: read the code, write failure issues. Nothing else.
 permissions:
   contents: read
-  issues: write # failure alerts
+  issues: write
 
 concurrency:
   group: prod
@@ -37,16 +38,21 @@ env:
   DBT_PROFILES_DIR: ${{ github.workspace }}/transform
   AIRFLOW__CORE__LOAD_EXAMPLES: "False"
   AIRFLOW__CORE__DAGS_FOLDER: ${{ github.workspace }}/orchestration/dags
-  MOTHERDUCK_TOKEN: ${{ secrets.MOTHERDUCK_TOKEN }}
+  # MOTHERDUCK_TOKEN is deliberately NOT set here: only the steps that need it receive it.
 
 jobs:
   run-dag:
     name: Run ${{ inputs.dag || 'nba_daily' }}
     runs-on: ubuntu-latest
     timeout-minutes: 120
+    # The token is an environment secret of `prod`, whose deployment-branch rule allows only
+    # `main`. A job from any other branch (even one that edits this file) cannot read it.
+    environment: prod
     steps:
       - name: Check MotherDuck is configured
         id: config
+        env:
+          MOTHERDUCK_TOKEN: ${{ secrets.MOTHERDUCK_TOKEN }}
         run: |
           if [ -z "$MOTHERDUCK_TOKEN" ]; then
             echo "::notice::MOTHERDUCK_TOKEN secret is not set; skipping the prod run."
@@ -75,6 +81,7 @@ jobs:
       - name: Run DAG
         if: steps.config.outputs.enabled == 'true'
         env:
+          MOTHERDUCK_TOKEN: ${{ secrets.MOTHERDUCK_TOKEN }}
           DAG_ID: ${{ inputs.dag || 'nba_daily' }}
           SEASONS: ${{ inputs.seasons }}
           FULL_REFRESH: ${{ inputs.full_refresh }}
