@@ -137,7 +137,9 @@ Every commit (pre-commit) and every pull request (GitHub Actions) runs:
   undocumented public models); [approved exceptions](transform/seeds/dbt_project_evaluator_exceptions.csv)
   carry a reason.
 
-Design and trade-offs: [ADR 0005](docs/adr/0005-team-scale-ci-and-governance.md).
+Every PR gets four checks: **Lint & unit tests**, **dbt build** and **Project structure**
+(required), and **Data diff** (advisory). Design and trade-offs:
+[ADR 0005](docs/adr/0005-team-scale-ci-and-governance.md).
 
 Known upstream data issues are tracked as warning-level tests tagged `known_issue`, so they stay
 visible on every run. Example: ESPN's `sequence_number` order made the running score go backwards

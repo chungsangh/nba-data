@@ -8,9 +8,16 @@
    never touches anyone else's data.
 4. One approving review, green CI, then squash-merge.
 
-What CI does on your PR: builds only what you changed plus everything downstream (Slim CI against
-`main`'s last build), runs every test, validates the semantic layer, checks project structure, and
-posts a data diff comment. `make ci` runs the same checks locally.
+What CI does on your PR, as four checks:
+
+- **Lint & unit tests**: pre-commit hooks, pytest, Airflow DAG tests.
+- **dbt build**: builds only what you changed plus everything downstream (Slim CI against `main`'s
+  last build), runs every test, enforces contracts, validates the semantic layer.
+- **Project structure**: dbt-project-evaluator.
+- **Data diff (advisory)**: a Recce comment showing what your change did to the data. It never
+  blocks a merge, but read it.
+
+`make ci` runs the dbt checks locally.
 
 ## Changing a gold model's columns
 

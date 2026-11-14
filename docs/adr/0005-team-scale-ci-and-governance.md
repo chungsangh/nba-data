@@ -61,6 +61,22 @@ dbt-project-evaluator runs in CI with severity `error`. Approved exceptions live
 original relation name (`gold.dim_games`) and a deprecation date of 2027-01-31; `ref('dim_games')`
 resolves to v2.
 
+### Four CI checks
+
+Each gate is its own check, so a red check names the problem, and advisory checks can't hide
+inside a green one:
+
+| Check | Required | Contains |
+|---|---|---|
+| Lint & unit tests | yes | pre-commit (gitleaks, ruff, SQLFluff, dbt-checkpoint, metric governance), pytest, DAG tests |
+| dbt build | yes | Slim CI build and tests, contracts, breaking-change guard, MetricFlow validation, known-answer checks |
+| Project structure | yes | dbt-project-evaluator; needs no data, so it runs in parallel with dbt build |
+| Data diff (advisory) | no | Recce comment and source freshness; `continue-on-error`, so it can show red without blocking |
+
+Lint gates the rest so a typo never costs a warehouse build. The extra jobs repeat setup (about a
+minute each) but run in parallel, so wall-clock time barely changes. The build job hands its
+built warehouse to the data diff job as an artifact.
+
 ## Consequences
 
 - The baseline is main's CI data (current season, built minutes after merge), not prod. Diffs
