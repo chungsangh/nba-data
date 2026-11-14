@@ -67,6 +67,26 @@ models:
   - name: dim_games
     description: >
       One row per scheduled game, including future, postponed and All-Star games.
+      v2 (latest) replaces the is_all_star and is_cup_championship flags with one game_type
+      column. v1 stays on the original relation name, gold.dim_games, until its deprecation date.
+    latest_version: 2
+    versions:
+      - v: 1
+        deprecation_date: 2027-01-31
+        config:
+          alias: dim_games
+      - v: 2
+        columns:
+          - include: all
+            exclude: [is_all_star, is_cup_championship]
+          - name: game_type
+            data_type: varchar
+            description: "regular_season, nba_cup_final, play_in, playoffs or all_star."
+            data_tests:
+              - not_null
+              - accepted_values:
+                  arguments:
+                    values: ["regular_season", "nba_cup_final", "play_in", "playoffs", "all_star"]
     columns:
       - name: game_id
         data_type: integer

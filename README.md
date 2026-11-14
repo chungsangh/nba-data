@@ -7,7 +7,7 @@ metrics, and CI that lets many people change models safely.
 The data is real and refreshes daily: ESPN play-by-play, box scores and schedules, republished by
 [sportsdataverse-data](https://github.com/sportsdataverse/sportsdataverse-data).
 
-> Status: **Phase 4, orchestration.** Airflow + Cosmos DAGs run the pipeline daily against MotherDuck.
+> Status: **Phase 5, team-scale CI and governance.** All planned phases are complete.
 > See the [roadmap](#roadmap) and the full [project plan](docs/project-plan.md).
 
 ## Quick start
@@ -121,6 +121,24 @@ Every commit (pre-commit) and every pull request (GitHub Actions) runs:
   independently written SQL (a deliberately wrong eFG% formula is caught).
 - **Source freshness**, reported without blocking unrelated PRs.
 
+### For a team
+
+- **Slim CI**: PRs build only changed models and everything downstream, reading the rest from
+  `main`'s last CI build (no warehouse credentials in PRs), then clone unchanged models so every
+  check sees a complete project. A one-model change builds 10 nodes instead of 137.
+- **Data diff on every PR**: a [Recce](https://github.com/DataRecce/recce) comment with row count
+  and schema changes and the lineage of what changed.
+- **Breaking-change guard**: removing or retyping a column of a contracted model without a new
+  model version fails CI unless a reviewer adds `approved-breaking-change`. Example migration:
+  `dim_games` v1 → v2.
+- **Ownership enforced by dbt**: groups `platform` and `game_analytics`; silver models are private
+  to their group, gold is public. [CODEOWNERS](.github/CODEOWNERS) routes reviews the same way.
+- **dbt-project-evaluator** fails CI on new structure problems (layer skipping, missing PK tests,
+  undocumented public models); [approved exceptions](transform/seeds/dbt_project_evaluator_exceptions.csv)
+  carry a reason.
+
+Design and trade-offs: [ADR 0005](docs/adr/0005-team-scale-ci-and-governance.md).
+
 Known upstream data issues are tracked as warning-level tests tagged `known_issue`, so they stay
 visible on every run. Example: ESPN's `sequence_number` order made the running score go backwards
 ~4,600 times in two seasons; silver orders by `game_play_number` instead, which leaves 24 genuine
@@ -138,7 +156,7 @@ score corrections.
    backfills, alerts, dbt docs site. ✅
 5. **Team-scale CI & governance** — Slim CI with `state:modified+ --defer`, Recce data diffs on PRs,
    dbt-project-evaluator, CODEOWNERS, model access and groups, versioned gold models,
-   breaking-change guard.
+   breaking-change guard. ✅
 
 ## Data and attribution
 

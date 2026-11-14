@@ -8,6 +8,31 @@
    never touches anyone else's data.
 4. One approving review, green CI, then squash-merge.
 
+What CI does on your PR: builds only what you changed plus everything downstream (Slim CI against
+`main`'s last build), runs every test, validates the semantic layer, checks project structure, and
+posts a data diff comment. `make ci` runs the same checks locally.
+
+## Changing a gold model's columns
+
+Gold models are public and contracted. Adding a column is fine. Removing, renaming or retyping
+one breaks consumers, so:
+
+1. Add a new model version (`versions:` in the model's YAML) with the new shape and make it
+   `latest_version`.
+2. Keep the old version on the original relation name (`config: alias:`) with a
+   `deprecation_date`, so existing queries keep working.
+3. Move internal refs and semantic models to the new version.
+4. Remove the old version after its deprecation date.
+
+CI fails a contract break without a new version. If a break is truly intended, a reviewer adds the
+`approved-breaking-change` label (see ADR 0005).
+
+## Ownership
+
+Models belong to a dbt group (`platform` or `game_analytics`, see
+`transform/models/_groups.yml`). Silver models are private to their group: to use another
+group's silver model, ask its owner to make it `protected` or expose what you need in gold.
+
 See [STYLE_GUIDE.md](STYLE_GUIDE.md) for layer rules, naming and testing standards, and
 [docs/adr/](docs/adr/) for why things are the way they are.
 

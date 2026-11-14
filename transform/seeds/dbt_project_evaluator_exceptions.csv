@@ -1,0 +1,2 @@
+fct_name,column_name,id_to_exclude,comment
+fct_model_fanout,parent,int_games_classified,"Shared game classification (All-Star, NBA Cup final, playoff round, Eastern date). Every fact filters on it by design; splitting it would duplicate the rules."

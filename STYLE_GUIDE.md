@@ -8,7 +8,7 @@ in CI). When a rule is only a convention, reviewers enforce it.
 | Layer | Folder | Prefix | Materialization | Access | What belongs here |
 |---|---|---|---|---|---|
 | **Bronze** | `models/bronze/<source>/` | `stg_<source>__<entity>` | view | protected | 1:1 with a raw table. Rename, cast, normalize units/time zones, null out sentinels. **No joins, no business logic.** |
-| **Silver** | `models/silver/<domain>/` | `int_<entity>_<verb>` | table | protected | Joins, dedup, ordering fixes, business rules (possessions, lineups). Reusable building blocks; not queried by consumers. |
+| **Silver** | `models/silver/<domain>/` | `int_<entity>_<verb>` | table | private to its group | Joins, dedup, ordering fixes, business rules (possessions, lineups). Reusable building blocks; not queried by consumers. |
 | **Gold** | `models/gold/<domain>/` | `fct_` / `dim_` | table / incremental | public | Kimball facts and dimensions. Contracts enforced. The only layer MetricFlow and consumers read. |
 | Semantic | `models/semantic/` | — | — | — | Semantic models, metrics, saved queries on top of gold. |
 

@@ -1,0 +1,28 @@
+# Review routing. Mirrors the dbt groups in transform/models/_groups.yml and metric meta.owner.
+# With branch protection's "Require review from Code Owners", a PR touching these paths needs an
+# approval from the listed owner. This is a one-person project, so every team maps to the same
+# account; in a real team each line would name a GitHub team (e.g. an org's analytics-eng team).
+
+# Default
+*                                         @chungsangh
+
+# platform group (Analytics Engineering): ingestion, bronze, conformed league dimensions
+/ingestion/                               @chungsangh
+/transform/models/bronze/                 @chungsangh
+/transform/models/silver/league/          @chungsangh
+/transform/models/gold/league/            @chungsangh
+/transform/snapshots/                     @chungsangh
+/transform/seeds/                         @chungsangh
+
+# game_analytics group (Basketball Analytics): play-by-play logic and game event facts
+/transform/models/silver/game_events/     @chungsangh
+/transform/models/gold/game_events/       @chungsangh
+
+# Metric definitions: changes to certified metrics need the metric owner (CONTRIBUTING.md)
+/transform/models/semantic/               @chungsangh
+/METRICS.md                               @chungsangh
+
+# Orchestration, CI and secrets handling
+/orchestration/                           @chungsangh
+/.github/                                 @chungsangh
+/docs/prod-setup.md                       @chungsangh

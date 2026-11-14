@@ -1,5 +1,8 @@
 models:
   - name: int_games_classified
+    config:
+      # Shared on purpose: every fact in both groups filters on these classifications.
+      access: protected
     description: >
       One row per scheduled game with business classifications: playoff round, All-Star and NBA
       Cup championship flags, whether the game counts toward team records, the US Eastern game
@@ -11,6 +14,12 @@ models:
       - name: game_date
         description: Game date in US Eastern time.
         data_tests: [not_null]
+      - name: game_type
+        description: regular_season, nba_cup_final, play_in, playoffs or all_star.
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ["regular_season", "nba_cup_final", "play_in", "playoffs", "all_star"]
       - name: counts_toward_record
         description: False for All-Star games and the NBA Cup championship.
       - name: winning_team_id

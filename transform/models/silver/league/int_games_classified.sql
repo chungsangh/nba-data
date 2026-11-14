@@ -19,6 +19,12 @@ final as (
             when 'SEMI' then 'conference_finals'
             when 'FINAL' then 'finals'
         end as playoff_round,
+        -- one label instead of several mutually exclusive flags (used by dim_games v2)
+        case
+            when game_type_code = 'ALLSTAR' then 'all_star'
+            when game_type_code = 'CC' then 'nba_cup_final'
+            else season_type
+        end as game_type,
         game_type_code = 'ALLSTAR' as is_all_star,
         game_type_code = 'CC' as is_cup_championship,
         -- the NBA Cup final and All-Star games do not count toward team records

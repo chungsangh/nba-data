@@ -1,0 +1,18 @@
+# Ownership. Each model belongs to one group (assigned by folder in dbt_project.yml).
+# A `private` model can only be ref'd from inside its own group, so a team can refactor its
+# internals without breaking another team. Gold is `public`: the contracted interface.
+# The same owners appear in .github/CODEOWNERS (review routing) and in metric meta.owner.
+
+groups:
+  - name: platform
+    description: >
+      Ingestion, bronze staging, conformed league dimensions (games, teams, players, dates)
+      and the shared reference data.
+    owner:
+      name: Analytics Engineering (analytics_engineering)
+
+  - name: game_analytics
+    description: >
+      Play-by-play logic (play order, possessions, shot location) and the game event facts.
+    owner:
+      name: Basketball Analytics (basketball_analytics)
