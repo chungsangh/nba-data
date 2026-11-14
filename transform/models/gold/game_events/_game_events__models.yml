@@ -409,6 +409,10 @@ models:
         data_type: boolean
         description: "True if made."
         data_tests: [not_null]
+      - name: is_assisted
+        data_type: boolean
+        description: "True when a made shot was assisted. Always false on misses."
+        data_tests: [not_null]
       - name: points
         data_type: integer
         description: "Points scored (0 on a miss)."

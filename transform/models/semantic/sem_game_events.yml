@@ -80,6 +80,8 @@ semantic_models:
         type: categorical
       - name: shot_value
         type: categorical
+      - name: is_assisted
+        type: categorical
       - name: period
         type: categorical
     measures:

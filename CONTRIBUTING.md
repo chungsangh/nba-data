@@ -34,6 +34,16 @@ one breaks consumers, so:
 CI fails a contract break without a new version. If a break is truly intended, a reviewer adds the
 `approved-breaking-change` label (see ADR 0005).
 
+## Changing an incremental model
+
+`fct_shots` and `fct_possessions` are incremental. You don't need to plan a full refresh: the
+next prod run compares the code with the last prod run and rebuilds any incremental model that
+changed, or that sits downstream of a change, from scratch (ADR 0003). The table is briefly
+missing while that run rebuilds it.
+
+Your own dev schemas have no such step: after pulling a change to an incremental model, rebuild
+it once with `cd transform && uv run dbt build -s <model> --full-refresh`.
+
 ## Ownership
 
 Models belong to a dbt group (`platform` or `game_analytics`, see

@@ -29,13 +29,19 @@ are paid. Prefect Cloud has a free tier but is not Airflow.
   `orchestration/` and deleting the cron, not rewriting DAGs.
 - **Alerts**: every task has an `on_failure_callback` that logs a structured summary and appends it
   to `NBA_ALERTS_FILE`; the workflow opens (or comments on) a `prod-failure` issue with it.
-  `airflow dags test` exits 1 when the run fails (verified on 3.3.2 by forcing a failure); the
-  workflow also fails if the alerts file is non-empty, as a second check.
+  Airflow sets a run's state from its final tasks, and `source_freshness` runs even after
+  failures (`all_done`), so a run with a failed task could still end as success and
+  `airflow dags test` exit 0 (seen on 3.3.2). A watcher task downstream of every task
+  (`trigger_rule="one_failed"`) fails the run if anything failed, and the workflow also fails if
+  the alerts file is non-empty, as a second check.
 - **Warehouse**: MotherDuck free plan (`md:nba`). The token is a `prod` environment secret that
   only deploys from `main`, and only the steps that connect to MotherDuck receive it
   ([docs/prod-setup.md](../prod-setup.md)).
   Ingestion creates the database on first run. A local DuckDB file allows one writer, so DAGs run
   one task at a time against a file and four at a time against MotherDuck.
+- **Deploys of incremental models**: the prod workflow downloads the last successful run's
+  manifest, and the DAG's first dbt-related task drops incremental models that changed since then
+  so they are rebuilt (ADR 0003).
 - **Freshness** runs last with `trigger_rule="all_done"` and no retries: stale upstream data alerts
   but does not block publishing what we have.
 
