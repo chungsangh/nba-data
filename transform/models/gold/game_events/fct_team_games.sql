@@ -81,6 +81,7 @@ final as (
         cast(is_winner as boolean) as is_win,
         cast(points as integer) as points,
         cast(opponent_points as integer) as opponent_points,
+        cast(points - opponent_points as integer) as point_differential,
 
         -- tempo
         cast(possessions as integer) as possessions,

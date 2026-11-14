@@ -66,6 +66,10 @@ models:
       - name: opponent_points
         data_type: integer
         description: "Points allowed."
+      - name: point_differential
+        data_type: integer
+        description: "Points minus opponent points (margin of victory; negative in a loss)."
+        data_tests: [not_null]
       - name: possessions
         data_type: integer
         description: "Offensive possessions, counted from play-by-play. NULL for the rare game ESPN publishes without play-by-play."
