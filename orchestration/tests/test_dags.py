@@ -27,7 +27,7 @@ def test_every_task_has_owner_retries_and_alerting(dagbag, dag_id):
     for task in dagbag.get_dag(dag_id).tasks:
         assert task.owner == "analytics_engineering", task.task_id
         assert task.on_failure_callback, task.task_id
-        if task.task_id != "source_freshness":
+        if task.task_id not in {"source_freshness", "fail_run_if_any_task_failed"}:
             assert task.retries >= 1, task.task_id
 
 
@@ -44,6 +44,18 @@ def test_daily_renders_dbt_models_with_tests(dagbag):
 def test_daily_order(dagbag):
     dag = dagbag.get_dag("nba_daily")
     ingest = dag.get_task("ingest_current_season")
+    reset = dag.get_task("reset_changed_incremental_models")
     freshness = dag.get_task("source_freshness")
-    assert any(t.startswith("dbt.") for t in ingest.downstream_task_ids)
+    watcher = {"fail_run_if_any_task_failed"}
+    # changed incremental models are dropped after ingestion and before any dbt task runs
+    assert ingest.downstream_task_ids - watcher == {"reset_changed_incremental_models"}
+    after_reset = reset.downstream_task_ids - watcher
+    assert after_reset and all(t.startswith("dbt.") for t in after_reset)
     assert freshness.trigger_rule == "all_done"
+
+
+def test_daily_run_fails_when_any_task_fails(dagbag):
+    dag = dagbag.get_dag("nba_daily")
+    watcher = dag.get_task("fail_run_if_any_task_failed")
+    assert watcher.trigger_rule == "one_failed"
+    assert set(watcher.upstream_task_ids) == set(dag.task_ids) - {watcher.task_id}

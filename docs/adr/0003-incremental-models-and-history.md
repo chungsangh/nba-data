@@ -27,6 +27,19 @@ come with a deliberate `--full-refresh` (and, for public models, a new model ver
 Player history uses a `check` snapshot (`snap_players`) on team, jersey, position and name over
 `int_players_latest`. `dim_players` exposes it as type 2 (`valid_from`, `valid_to`, `is_current`).
 
+### Deploying changes to incremental models
+
+An incremental run only processes new and lookback data, so after a code change it either fails
+(columns changed: "source and target schemas are out of sync") or keeps old history computed with
+the old logic. CI can't catch this: PR builds create the model from scratch.
+
+Each prod run therefore starts by comparing the code with the last successful prod run's manifest
+(the `prod-dbt-state` artifact) and dropping every incremental model in
+`state:modified+,config.materialized:incremental`. dbt then rebuilds those from scratch, with
+today's upstream data, in the normal run (`scripts/reset_changed_incrementals.sh`, task
+`reset_changed_incremental_models`). At this project's size a rebuild takes seconds; a large
+warehouse would narrow the selection to contract changes and backfill logic changes deliberately.
+
 ## Verification
 
 - Incremental re-run and `--full-refresh` produce identical row counts and point totals for both
@@ -36,7 +49,9 @@ Player history uses a `check` snapshot (`snap_players`) on team, jersey, positio
 
 ## Consequences
 
-- Corrections older than the lookback window need a targeted backfill or full refresh.
+- Upstream stat corrections older than the lookback window need a targeted backfill or full
+  refresh. Code changes don't: the next prod run rebuilds affected incremental models.
+- Between the drop and the rebuild (a minute or two of the prod run) the dropped table is missing.
 - The snapshot only records changes from the first prod run onward. Past trades can be derived
   from box scores (team per game) if needed later.
 - The first microbatch run processes one batch per day since `date_spine_start` (~30 s on DuckDB).

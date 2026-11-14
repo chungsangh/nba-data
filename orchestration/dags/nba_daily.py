@@ -1,19 +1,23 @@
 """Daily production run.
 
-    ingest current season ─► dbt (Cosmos: one task per model, tests right after each model)
-                          ─► semantic layer checks ─► source freshness (alerts, never blocks)
+    ingest current season ─► reset changed incremental models
+        ─► dbt (Cosmos: one task per model, tests right after each model)
+        ─► semantic layer checks ─► source freshness (alerts, never blocks)
 
 The publisher refreshes around 07:30 ET (12:30 UTC); the run starts at 14:00 UTC. Ingestion
 replaces the whole current season, and the incremental models reprocess the last 3 days, so
-stat corrections land without a backfill.
+stat corrections land without a backfill. When a deploy changed an incremental model (or anything
+upstream of it) since the last prod run, that model is dropped first and rebuilt from scratch, so
+a column change can't fail the run and old history isn't left computed with old logic.
 """
 
 from __future__ import annotations
 
 from datetime import datetime, timedelta
 
+from airflow.exceptions import AirflowException
 from airflow.providers.standard.operators.bash import BashOperator
-from airflow.sdk import DAG
+from airflow.sdk import DAG, task
 from cosmos import (
     DbtTaskGroup,
     ExecutionConfig,
@@ -52,6 +56,18 @@ with DAG(
         doc_md="Replace the current season of every ESPN dataset in the raw schema.",
         bash_command=f"cd {REPO_ROOT} && nba-ingest",
         env=TASK_ENV,
+        append_env=True,
+    )
+
+    reset_changed_incrementals = BashOperator(
+        task_id="reset_changed_incremental_models",
+        doc_md=(
+            "Compare the code with the last prod run's manifest (NBA_PROD_STATE_DIR) and drop "
+            "incremental models that changed or sit downstream of a change, so dbt rebuilds them."
+        ),
+        # Trailing space: Airflow treats a bash_command ending in ".sh" as a template file path.
+        bash_command=f"cd {REPO_ROOT} && scripts/reset_changed_incrementals.sh ",
+        env={**TASK_ENV, "DBT_CMD": "dbt"},
         append_env=True,
     )
 
@@ -116,4 +132,16 @@ with DAG(
         retries=0,
     )
 
-    ingest >> dbt >> semantic_layer_checks >> source_freshness
+    ingest >> reset_changed_incrementals >> dbt >> semantic_layer_checks >> source_freshness
+
+    # Airflow sets a run's state from its final tasks. source_freshness runs even after failures
+    # (all_done) and would mark a broken run as successful, so this watcher, downstream of every
+    # task, fails the run if anything failed.
+    @task(trigger_rule="one_failed", retries=0)
+    def fail_run_if_any_task_failed():
+        raise AirflowException("A task in this run failed; see the failed task's logs.")
+
+    watcher = fail_run_if_any_task_failed()
+    for upstream_task in dag.tasks:
+        if upstream_task is not watcher.operator:
+            upstream_task >> watcher

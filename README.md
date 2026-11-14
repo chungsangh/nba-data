@@ -87,7 +87,7 @@ Airflow 3 DAGs in [`orchestration/`](orchestration/), with
 seed, snapshot and test into its own Airflow task:
 
 ```
-nba_daily   ingest current season ─► dbt (51 tasks: model ─► its tests; cross-model tests wait for all parents)
+nba_daily   ingest current season ─► reset changed incremental models ─► dbt (51 tasks: model ─► its tests; cross-model tests wait for all parents)
                                  ─► MetricFlow validation + known-answer metric tests ─► source freshness
 nba_backfill  reload chosen seasons ─► dbt build --full-refresh ─► metric checks   (manual, with params)
 ```

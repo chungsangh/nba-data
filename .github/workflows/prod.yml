@@ -26,6 +26,7 @@ on:
 permissions:
   contents: read
   issues: write
+  actions: read # fetch the previous prod run's dbt state
 
 concurrency:
   group: prod
@@ -77,6 +78,23 @@ jobs:
       - name: dbt deps and parse (Cosmos renders the DAG from the manifest)
         if: steps.config.outputs.enabled == 'true'
         run: cd transform && uv run dbt deps && uv run dbt parse
+
+      # The last successful prod run's manifest tells the DAG which incremental models changed
+      # since then, so it can rebuild them instead of failing on a schema change.
+      - name: Fetch previous prod state
+        if: steps.config.outputs.enabled == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          run_id=$(gh run list --workflow prod.yml --branch main --status success --limit 1 \
+            --json databaseId --jq '.[0].databaseId')
+          dir="$RUNNER_TEMP/prev-prod-state"
+          if [ -n "$run_id" ] && gh run download "$run_id" --name prod-dbt-state --dir "$dir"; then
+            echo "NBA_PROD_STATE_DIR=$dir" >> "$GITHUB_ENV"
+            echo "Previous prod state from run $run_id"
+          else
+            echo "::notice::No previous prod state; changed incremental models won't be reset."
+          fi
 
       - name: Run DAG
         if: steps.config.outputs.enabled == 'true'

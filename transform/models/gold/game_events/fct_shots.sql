@@ -62,6 +62,7 @@ final as (
         cast(shots.shot_x as double) as shot_x,
         cast(shots.shot_y as double) as shot_y,
         cast(shots.is_made as boolean) as is_made,
+        cast(shots.assisting_player_id is not null as boolean) as is_assisted,
         cast(shots.points as integer) as points
 
     from shots
